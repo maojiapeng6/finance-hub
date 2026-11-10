@@ -1,261 +1,162 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#070b12">
-<title>环球财经雷达 · 全球市场实时聚合</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>GFIC · 全球金融情报中心</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1220'/%3E%3Cpath d='M12 44 L25 30 L34 37 L52 17' stroke='%234dd4e8' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='52' cy='17' r='4' fill='%23a78bfa'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/static/style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230e1726'/%3E%3Cpath d='M4 22 L11 15 L15 18 L22 8 L28 12' fill='none' stroke='%2338bdf8' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 </head>
 <body>
+<div class="grid-bg" aria-hidden="true"></div>
 
-<div class="mesh"></div>
-<div class="noise"></div>
+<div class="app-shell">
 
-<!-- ==================== 顶栏 ==================== -->
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-mark">
-      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-        <circle cx="16" cy="16" r="14" fill="none" stroke="url(#g1)" stroke-width="1.6" opacity=".55"/>
-        <path d="M4 20 L10 14 L14 17 L21 8 L28 12" fill="none" stroke="url(#g1)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#a78bfa"/>
-        </linearGradient></defs>
-      </svg>
-    </div>
-    <div class="brand-txt">
-      <h1>环球财经雷达 <span class="ver">FINANCE RADAR</span></h1>
-      <p>全球局势 · 财经快讯 · 盘面风向，一眼看懂</p>
-    </div>
-  </div>
-
-  <div class="top-right">
-    <div class="live-pill" id="livePill"><span class="dot" id="liveDot"></span><span id="liveTxt">连接中</span></div>
-    <div class="clock"><b id="clockTime">--:--:--</b><small id="clockDate">----</small></div>
-    <button class="icon-btn" id="btnSources" title="权威信息源导航（126 个）">
-      <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>
-      <span>信息源</span>
-    </button>
-    <button class="icon-btn" id="btnRefresh" title="立即刷新全部数据">
-      <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M17.65 6.35A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.76-4.24L13 11h7V4z"/></svg>
-      <span>刷新</span>
-    </button>
-    <label class="switch" title="自动刷新开关">
-      <input type="checkbox" id="autoSwitch" checked><span class="slider"></span><em>自动</em>
-    </label>
-  </div>
-</header>
-
-<!-- ==================== 行情跑马灯 ==================== -->
-<div class="ticker-wrap">
-  <div class="ticker-label"><span class="pulse"></span>全球行情</div>
-  <div class="ticker-mask"><div class="ticker-track" id="tickerTrack">
-    <div class="ticker-empty">正在连接行情数据…</div>
-  </div></div>
-  <div class="ticker-time" id="quoteTime">--:--</div>
-</div>
-
-<button class="newbar" id="newBar" hidden>↑ 有 <b id="newCount">0</b> 条新动态 · 点击查看</button>
-
-<!-- ==================== 首屏总览 ==================== -->
-<section class="hero">
-  <div class="hero-copy">
-    <div class="hero-eyebrow"><span class="live-dot"></span> LIVE · 全球市场实时聚合</div>
-    <h2>今天，市场在发生什么<span class="q">？</span></h2>
-    <p class="hero-line" id="heroLine">正在汇总全球资讯与行情，为你生成一句话风向…</p>
-    <div class="clocks" id="marketClocks"></div>
-  </div>
-  <div class="kpi-grid" id="kpiGrid">
-    <div class="kpi kpi-mood">
-      <div class="kpi-top"><span class="kpi-label">市场情绪</span><span class="kpi-ico">◑</span></div>
-      <div class="kpi-val" id="kpiSent">--</div>
-      <div class="kpi-sub" id="kpiSentSub">正在计算…</div>
-      <div class="kpi-bar"><i id="kpiBar"></i></div>
-    </div>
-    <div class="kpi kpi-news">
-      <div class="kpi-top"><span class="kpi-label">今日快讯</span><span class="kpi-ico">≡</span></div>
-      <div class="kpi-val" id="kpiNews">--</div>
-      <div class="kpi-sub" id="kpiNewsSub">其中官方原文 -- 条</div>
-      <div class="kpi-foot"><span class="kpi-chip">P1 官方</span><span class="kpi-chip p2">P2 专业</span><span class="kpi-chip p3">P3 社交</span></div>
-    </div>
-    <div class="kpi kpi-up">
-      <div class="kpi-top"><span class="kpi-label">领涨资产</span><span class="kpi-ico">↗</span></div>
-      <div class="kpi-val small" id="kpiTop">--</div>
-      <div class="kpi-sub" id="kpiTopSub">等待行情…</div>
-      <div class="kpi-foot" id="kpiTopList"></div>
-    </div>
-    <div class="kpi kpi-down">
-      <div class="kpi-top"><span class="kpi-label">领跌资产</span><span class="kpi-ico">↘</span></div>
-      <div class="kpi-val small" id="kpiBottom">--</div>
-      <div class="kpi-sub" id="kpiBottomSub">等待行情…</div>
-      <div class="kpi-foot" id="kpiBottomList"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ==================== 主体 ==================== -->
-<main class="layout">
-
-  <!-- 左：信息流 -->
-  <section class="col-main">
-    <div class="panel feed-panel">
-      <div class="panel-head">
-        <div class="ph-left">
-          <h2><span class="bar"></span>实时信息流</h2>
-          <span class="cnt" id="feedCount">0 条</span>
-        </div>
-        <div class="ph-right">
-          <div class="search-box">
-            <svg viewBox="0 0 24 24" width="15" height="15"><path fill="currentColor" d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5 1.5-1.5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14"/></svg>
-            <input id="feedSearch" type="search" placeholder="搜索关键词，如 降息 / 英伟达 / 黄金">
-            <kbd>/</kbd>
-          </div>
-        </div>
+  <!-- ================= 左侧导航 ================= -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 28 L14 18 L21 23 L34 8" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="34" cy="8" r="3" fill="currentColor"/></svg>
       </div>
-
-      <div class="filters">
-        <div class="tabs" id="catTabs"></div>
-        <div class="mini-filters">
-          <select id="prioFilter" title="按信息源等级筛选">
-            <option value="">全部等级</option>
-            <option value="P1">P1 官方</option>
-            <option value="P2">P2 专业</option>
-            <option value="P3">P3 社交</option>
-          </select>
-          <select id="langFilter" title="按语言筛选">
-            <option value="">全部语言</option>
-            <option value="zh">仅中文</option>
-            <option value="en">仅英文</option>
-          </select>
-        </div>
+      <div class="brand-text">
+        <b>GFIC</b>
+        <span>全球金融情报中心</span>
       </div>
-
-      <div class="feed-note" id="feedNote">
-        每条快讯都可点开原文，并附「大白话解读」与关联行情链接；<b>P1</b> 为官方原文，<b>P3</b> 社交情绪务必回官方核实。
-      </div>
-
-      <div class="feed-list" id="feedList">
-        <div class="loading"><span class="spin"></span>正在聚合全球资讯…</div>
-      </div>
-      <div class="feed-foot">
-        <button class="more-btn" id="btnMore">加载更多动态 ↓</button>
-        <span class="feed-hint" id="feedHint">已显示全部</span>
-      </div>
-    </div>
-  </section>
-
-  <!-- 右：可视化面板 -->
-  <aside class="col-side">
-
-    <!-- AI 简报 -->
-    <div class="panel brief-panel">
-      <div class="panel-head">
-        <div class="ph-left"><h2><span class="bar ai"></span>AI 盘面简报</h2><span class="ai-tag">freellmapi</span></div>
-        <div class="ph-right">
-          <button class="tiny-btn" id="btnCopyBrief" title="复制简报">复制</button>
-          <button class="tiny-btn" id="btnRegenBrief" title="重新生成">↻ 重生成</button>
-        </div>
-      </div>
-      <div class="brief-body" id="briefBody">
-        <div class="loading"><span class="spin"></span>AI 正在阅读最新资讯并撰写简报…</div>
-      </div>
-      <div class="brief-meta" id="briefMeta"></div>
+      <button class="side-collapse" id="btnSide" title="收起侧栏" aria-label="收起侧栏">‹</button>
     </div>
 
-    <!-- 市场温度 -->
-    <div class="panel temp-panel">
-      <div class="panel-head"><div class="ph-left"><h2><span class="bar warm"></span>市场温度计</h2></div>
-        <span class="hint-tag">基于资讯措辞</span></div>
-      <div class="temp-body">
-        <div class="gauge">
-          <svg viewBox="0 0 200 116" width="100%" height="112">
-            <defs><linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#34d399"/><stop offset="50%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#fb7185"/>
-            </linearGradient></defs>
-            <path d="M18 100 A82 82 0 0 1 182 100" fill="none" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
-            <path id="gaugeArc" d="M18 100 A82 82 0 0 1 182 100" fill="none" stroke="url(#gaugeGrad)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 258"/>
-            <circle cx="100" cy="100" r="5" fill="#e2e8f0"/>
-            <line id="gaugeLine" x1="100" y1="100" x2="100" y2="34" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/>
-          </svg>
-          <div class="gauge-num"><b id="tempScore">0</b><small>情绪分</small></div>
-        </div>
-        <div class="temp-info">
-          <div class="temp-verdict" id="tempVerdict">正在计算…</div>
-          <p class="temp-desc" id="tempDesc">统计近期快讯里的偏多 / 偏空措辞，帮你快速感受舆论温度。</p>
-          <div class="sent-bar"><div class="sent-pos" id="sentPos"></div><div class="sent-neg" id="sentNeg"></div></div>
-          <div class="sent-legend"><span class="up">偏多 <b id="posNum">0</b></span><span class="down">偏空 <b id="negNum">0</b></span></div>
-        </div>
+    <div class="side-status" id="sideStatus">
+      <div class="ss-row"><span class="ss-dot"></span><span>数据源</span><b id="ssSources">--</b></div>
+      <div class="ss-row"><span>已接入</span><b id="ssLive">--</b><span>成本</span><b class="ok">¥0</b></div>
+    </div>
+
+    <nav class="nav" id="nav" aria-label="模块导航"></nav>
+
+    <div class="side-foot">
+      <div class="policy-mini">
+        <b>数据口径</b>
+        <p>行情延迟 15–20 分钟 · 宏观为统计发布值 · 加密为交易所实时接口</p>
       </div>
+      <div class="ver">GFIC v2.0 · 免费优先 · 本地部署</div>
     </div>
-
-    <!-- 行情速览 -->
-    <div class="panel quote-panel">
-      <div class="panel-head"><div class="ph-left"><h2><span class="bar blue"></span>行情速览</h2></div>
-        <span class="hint-tag" id="quoteHint">免费源·约15分钟延迟</span></div>
-      <div class="quote-tabs" id="quoteTabs"></div>
-      <div class="quote-list" id="quoteList"><div class="loading"><span class="spin"></span>读取行情…</div></div>
-    </div>
-
-    <!-- 热词 -->
-    <div class="panel topic-panel">
-      <div class="panel-head"><div class="ph-left"><h2><span class="bar purple"></span>今日热词</h2></div>
-        <span class="hint-tag">点一下可反查资讯</span></div>
-      <div class="topic-body" id="topicBody"></div>
-    </div>
-
-    <!-- AI 问答 -->
-    <div class="panel ask-panel">
-      <div class="panel-head"><div class="ph-left"><h2><span class="bar ai"></span>问一句 · AI 解读</h2></div></div>
-      <div class="ask-chips" id="askChips">
-        <button>今天盘面在交易什么？</button>
-        <button>有哪些风险要注意？</button>
-        <button>用大白话解释降息影响</button>
-      </div>
-      <div class="ask-input">
-        <input id="askText" placeholder="输入你的问题，回车发送">
-        <button id="btnAsk">发送</button>
-      </div>
-      <div class="ask-answer" id="askAnswer" hidden></div>
-    </div>
-
-    <div class="panel note-panel">
-      <div class="note-title">📌 用前先看（很重要）</div>
-      <ul>
-        <li><b>P1</b> 官方原文最可信，<b>P2</b> 专业媒体最快，<b>P3</b> 社交情绪仅作参考，务必回官方核实。</li>
-        <li>免费行情约 <b>15–20 分钟延迟</b>，用于看趋势方向，<b>不用于下单</b>。</li>
-        <li>13F、COT 持仓有天然滞后；社交讨论量 ≠ 真实资金流。</li>
-        <li>本站仅做信息聚合，<b>不构成投资建议</b>，决策与风险请自行承担。</li>
-      </ul>
-    </div>
-
   </aside>
-</main>
 
-<footer class="footer">
-  <span>环球财经雷达 · 本地运行于端口 6789</span>
-  <span>数据：Yahoo Finance / Google News / CNBC / MarketWatch / BBC / Guardian / SEC / Fed · AI：freellmapi</span>
-  <span id="footTime">--</span>
-</footer>
+  <!-- ================= 主区域 ================= -->
+  <div class="main-col">
+    <header class="topbar">
+      <button class="mob-menu" id="btnMob" aria-label="打开导航">☰</button>
 
-<!-- ==================== 信息源抽屉 ==================== -->
-<div class="drawer-mask" id="drawerMask" hidden></div>
-<div class="drawer" id="drawer" hidden>
-  <div class="drawer-head">
-    <div><h2>权威信息源导航</h2><p>按可信度分级：P1 官方原文 › P2 专业情报 › P3 社交情绪，点击直达官网</p></div>
-    <button class="close-btn" id="btnCloseDrawer">✕</button>
+      <div class="page-title">
+        <div class="pt-eyebrow" id="ptEyebrow">INTELLIGENCE / OVERVIEW</div>
+        <h1 id="pageTitle">全球金融驾驶舱</h1>
+      </div>
+
+      <div class="market-clocks" id="clocks"></div>
+
+      <div class="top-actions">
+        <button class="search-trigger" id="btnSearch" title="全局搜索 (/)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <span>搜索资讯 / 数据源 / 标的</span><kbd>/</kbd>
+        </button>
+        <div class="live-pill" id="livePill"><i></i><span id="liveTxt">连接中</span></div>
+        <button class="icon-btn" id="btnTheme" title="切换深浅主题" aria-label="切换主题">◐</button>
+        <button class="icon-btn" id="btnNotify" title="风险预警通知" aria-label="通知">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <em id="notifyBadge" hidden>0</em>
+        </button>
+        <button class="icon-btn primary" id="btnRefresh" title="立即刷新全部数据" aria-label="刷新">↻</button>
+        <div class="clock-box"><b id="clockTime">--:--:--</b><small id="clockDate">----</small></div>
+      </div>
+    </header>
+
+    <div class="ticker-bar">
+      <div class="ticker-tag"><i class="pulse"></i>全球行情</div>
+      <div class="ticker-view"><div class="ticker-track" id="tickerTrack"><span class="ticker-idle">正在连接行情数据…</span></div></div>
+      <div class="ticker-meta" id="quoteTime">--:--</div>
+    </div>
+
+    <button class="newbar" id="newBar" hidden>↑ 有 <b id="newCount">0</b> 条新动态 · 点击载入</button>
+
+    <div class="content-grid">
+      <main class="view-area" id="viewArea">
+        <div class="view-host" id="viewHost"></div>
+        <footer class="page-foot">
+          <span>GFIC · 数据真实、来源可追溯、缺失即显示暂无数据</span>
+          <span>本平台仅供个人研究，<b>不构成投资建议</b>；延迟行情不可用于下单</span>
+        </footer>
+      </main>
+
+      <!-- ================= 右侧 AI 栏 ================= -->
+      <aside class="rightbar" id="rightbar">
+        <section class="rb-card rb-brief">
+          <div class="rb-head">
+            <div><span class="rb-ico ai">✦</span><b>AI 盘面简报</b></div>
+            <div class="rb-tools">
+              <button class="mini" id="btnCopyBrief" title="复制简报">复制</button>
+              <button class="mini" id="btnRegenBrief" title="重新生成">↻</button>
+            </div>
+          </div>
+          <div class="brief-body" id="briefBody"><div class="skeleton"><i></i><i></i><i></i></div></div>
+          <div class="rb-foot" id="briefMeta">基于站内真实资讯归纳 · 句末编号可点开原文</div>
+        </section>
+
+        <section class="rb-card">
+          <div class="rb-head"><div><span class="rb-ico warm">◑</span><b>市场温度计</b></div><span class="rb-sub" id="moodLabel">计算中</span></div>
+          <div class="gauge-wrap">
+            <svg viewBox="0 0 200 112" class="gauge" aria-label="市场情绪仪表">
+              <path d="M18 98 A82 82 0 0 1 182 98" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>
+              <path id="gaugeArc" d="M18 98 A82 82 0 0 1 182 98" fill="none" stroke="var(--cyan)" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 258" style="transition:stroke-dasharray .8s,stroke .5s"/>
+              <text id="gaugeVal" x="100" y="88" text-anchor="middle" class="gauge-num">--</text>
+            </svg>
+            <div class="gauge-legend"><span>偏空</span><span id="gaugeText">等待数据</span><span>偏多</span></div>
+          </div>
+          <div class="split-bar"><i id="posBar"></i><i id="negBar"></i></div>
+          <div class="split-legend"><span class="up" id="posTxt">利好 --</span><span class="down" id="negTxt">利空 --</span></div>
+          <p class="plain-note" id="moodNote">依据最新资讯标题的关键词统计，仅反映报道倾向，不等于资金流向。</p>
+        </section>
+
+        <section class="rb-card">
+          <div class="rb-head"><div><span class="rb-ico purple">＃</span><b>今日热词</b></div><span class="rb-sub">点击反查</span></div>
+          <div class="topics" id="topicBody"><span class="rb-sub">统计中…</span></div>
+        </section>
+
+        <section class="rb-card rb-ask">
+          <div class="rb-head"><div><span class="rb-ico cyan">⌘</span><b>AI 金融助手</b></div><span class="rb-sub">站内数据</span></div>
+          <div class="ask-log" id="askLog"><div class="ask-empty">可以问我：现在盘面风向如何？美债曲线说明什么？</div></div>
+          <div class="ask-chips" id="askChips">
+            <button>一句话说说当前盘面</button><button>美债收益率曲线说明什么</button>
+            <button>有哪些风险要留意</button><button>各交易所币价一致吗</button>
+          </div>
+          <div class="ask-input"><input id="askText" placeholder="基于站内真实数据提问…" autocomplete="off"><button id="btnAsk">发送</button></div>
+        </section>
+      </aside>
+    </div>
   </div>
-  <div class="drawer-search"><input id="srcSearch" placeholder="搜索机构名 / 网址 / 分类"></div>
-  <div class="drawer-legend">
-    <span class="lg p1">P1 官方原始</span><span class="lg p2">P2 专业情报</span><span class="lg p3">P3 社交情绪</span>
-    <span class="lg-src" id="srcCount"></span>
-  </div>
-  <div class="drawer-body" id="srcBody"></div>
 </div>
 
-<div class="toast" id="toast" hidden></div>
+<!-- 全局搜索 -->
+<div class="overlay" id="searchOverlay" hidden>
+  <div class="search-panel">
+    <div class="sp-head">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5 L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="globalSearch" placeholder="搜索资讯标题、信息源、标的…" autocomplete="off">
+      <button id="btnCloseSearch">ESC</button>
+    </div>
+    <div class="sp-body" id="searchResults"><div class="sp-hint">输入关键词开始检索站内真实数据</div></div>
+  </div>
+</div>
 
+<!-- 通知抽屉 -->
+<div class="overlay" id="notifyOverlay" hidden>
+  <div class="notify-panel">
+    <div class="np-head"><b>风险预警通知</b><button id="btnCloseNotify">✕</button></div>
+    <div class="np-body" id="notifyBody"></div>
+    <div class="np-foot"><button class="btn" id="btnGoAlerts">前往预警设置 →</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
 <script src="/static/app.js"></script>
 </body>
 </html>

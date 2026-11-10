@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-环球财经雷达 Finance Radar — 本地实时金融信息聚合
-端口 6789 | 零第三方依赖(仅标准库) | 可本机运行 / Docker 容器运行
+GFIC 全球金融情报中心 (Global Financial Intelligence Center) — v2.0
+端口 6789 | 零第三方依赖(仅 Python 标准库) | 本机 / Docker 容器均可运行
 
-数据源:
-  行情  Yahoo Finance v8 (全球指数/外汇/商品/加密/利率/龙头个股)
-  新闻  Bing News RSS 中英多主题 + CNBC / MarketWatch / BBC / Guardian 直连 RSS
-  AI    freellmapi (OpenAI 兼容, /v1/chat/completions, model=auto)
+架构：供应商 → 数据源适配层(gfic_sources) → 清洗/标准化 → 缓存 → 业务 API → 前端
+数据源（全部免费、真实、可溯源）：
+  A 级官方  FRED / 美国财政部 / World Bank / Eurostat / ECB / SEC EDGAR / 美联储 / EIA / WTO / BOJ
+             Binance / Coinbase / Kraken / OKX 交易所公开行情
+  B 级      Frankfurter (ECB 参考汇率封装)
+  C 级      Yahoo Finance (非官方·延迟) / Google News RSS / CNBC / MarketWatch / BBC / Guardian 等
+  D 级      Reddit r/stocks (社交情绪，不作投资结论依据)
+  AI        freellmapi (OpenAI 兼容 /v1/chat/completions)，密钥仅存服务端
+
+原则：不虚构行情、不模拟新闻、不把延迟数据标为实时；无数据显示「暂无数据」。
 """
 import json, os, re, time, html, threading, webbrowser
 import urllib.request, urllib.error, urllib.parse
@@ -15,6 +21,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import gfic_sources as gs
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE, "config.json")
@@ -44,6 +52,10 @@ def load_config():
         CFG["proxy"] = os.environ.get("FR_PROXY") or ""
     if os.environ.get("FR_LLM_BASE"):
         CFG["llm"]["base_url"] = os.environ["FR_LLM_BASE"]
+    # 密钥优先从服务端环境变量注入；config.json 为受保护的本地回退，绝不发送到浏览器
+    if os.environ.get("FR_LLM_KEY"):
+        CFG["llm"]["api_key"] = os.environ["FR_LLM_KEY"]
+    gs.init(CFG)
 
 
 # ---------------- 网络层：直连优先，失败回退代理 ----------------
@@ -408,30 +420,48 @@ _COT = re.compile(r"(the user asks|we need to|here'?s (a )?thinking|means:|first
                   r"the user wants|let me think|analysis:|step 1:)", re.I)
 
 
+# 上游模型偶发把「英文原文清单 + 自我核对草稿」一起吐出来，必须挡住
+_LEAK = re.compile(
+    r"(等等[，,]?\s*我|我需要检查|现在检查|让我核对|检查一下|对于第\s*\d+\s*条|"
+    r"我应该|可以接受|为了严谨|不过为了|原文没有|标题说|翻译为|没有添加数字|"
+    r"都在了|每个短句|按规则写|所有编号|"
+    r"let me check|i need to check|as requested|note:)", re.I)
+
+
 def _sanitize(t):
-    """清洗上游推理模型可能泄漏的英文思维链与代码块"""
+    """清洗上游推理模型可能泄漏的英文思维链、原始清单与代码块"""
     t = re.sub(r"<think>[\s\S]*?</think>", "", t or "", flags=re.I)
     t = re.sub(r"^```[a-zA-Z]*\s*$", "", t, flags=re.M).replace("```", "")
+    # 统一在服务端去掉 Markdown 加粗标记，前端 / API / 日志都拿到纯文本
+    t = t.replace("**", "")
     if "【" in t:                       # 简报正文从第一个小节标题开始
         t = t[t.index("【"):]
+    # 简报规定以「今日关键词」收尾，其后一律是模型自检草稿，直接裁掉
+    m = re.search(r"今日关键词：[^\n]*", t)
+    if m:
+        t = t[:m.end()]
     return t.strip()
 
 
-def _good(t, min_len):
-    """输出质量校验：长度够、中文占比够、开头无英文思维链"""
-    if not t or len(t) < min_len:
+def _good(t, min_len, max_len=3000):
+    """输出质量校验：长度合适、中文占比够、无思维链/自检草稿/英文原始清单"""
+    if not t or len(t) < min_len or len(t) > max_len:
         return False
     zh = len(re.findall(r"[\u4e00-\u9fff]", t))
-    if zh / max(1, len(t)) < 0.25:
+    if zh / max(1, len(t)) < 0.40:
         return False
-    if _COT.search(t[:220]):
+    if _COT.search(t[:220]) or _LEAK.search(t):
+        return False
+    # 上游把输入里已编号的英文标题原样抄回来（>2 行）视为未归纳
+    if len(re.findall(r"^\s*\d+\.\s+[A-Za-z]", t, re.M)) > 2:
         return False
     return True
 
 
-def _llm_chat(system, user, max_tokens=900, min_len=100):
+def _llm_chat(system, user, max_tokens=900, min_len=100, max_len=3000, accept=None):
     """freellmapi 调用：auto 优先 + 备选模型轮转 + 质量校验重试。
-    实测 auto 偶发路由到 2.6B 推理模型吐英文 CoT 并被 length 截断，故必须校验。"""
+    实测 auto 偶发路由到 2.6B 推理模型吐英文 CoT 并被 length 截断，故必须校验。
+    accept: 额外的业务校验回调（如简报必须带 [n] 溯源编号）。"""
     llm = CFG.get("llm", {})
     if not llm.get("enabled"):
         return None, "AI 未启用"
@@ -459,10 +489,10 @@ def _llm_chat(system, user, max_tokens=900, min_len=100):
                     resp = json.loads(r.read().decode("utf-8", "ignore"))
                 ch = resp["choices"][0]
                 txt = _sanitize(ch["message"]["content"])
-                if ch.get("finish_reason") == "length" and not _good(txt, min_len):
+                if ch.get("finish_reason") == "length" and not _good(txt, min_len, max_len):
                     last = "上游输出被截断(%s)" % model
                     continue
-                if not _good(txt, min_len):
+                if not _good(txt, min_len, max_len) or (accept and not accept(txt)):
                     last = "输出质量不合格(%s, %d字)" % (model, len(txt))
                     continue
                 return txt, None
@@ -509,7 +539,9 @@ def build_brief(force=False):
               "不要 markdown 代码块或表格。\n"
               "【全球局势】\n【宏观与财经】\n【股市风向】\n【商品与加密】\n【风险提示】")
     user = "以下为近实时聚合资讯（已去重、已编号），请据此生成简报：\n%s" % lines
-    txt, err = _llm_chat(system, user, CFG["llm"].get("brief_max_tokens", 2400), min_len=200)
+    txt, err = _llm_chat(system, user, CFG["llm"].get("brief_max_tokens", 2400),
+                         min_len=200, max_len=1800,
+                         accept=lambda x: len(re.findall(r"\[\d+\]", x)) >= 8)
     if err:
         BRIEF["status"] = "error"
         BRIEF["err"] = err
@@ -522,13 +554,59 @@ def build_brief(force=False):
     return BRIEF
 
 
+def _ai_context():
+    """AI 工作台的站内真实数据上下文：只放 GFIC 已接入的数据，并标注来源/时间/口径。"""
+    b = []
+    b.append("【GFIC 站内数据 · 全部为真实接入数据，非模型自带知识】")
+    if NEWS["items"]:
+        b.append("· 最新资讯（来源已标注，时间 %s）：" % datetime.fromtimestamp(
+            NEWS["updated"]).strftime("%Y-%m-%d %H:%M"))
+        b += ["  - %s｜%s" % (it.get("source", ""), it["title"]) for it in NEWS["items"][:22]]
+    if QUOTES["items"]:
+        b.append("· 行情快照（Yahoo Finance 非官方接口，约 15-20 分钟延迟）：")
+        b += ["  - %s %s %s %+.2f%%" % (x["symbol"], x["name"], x["price"], x["pct"])
+              for x in QUOTES["items"][:20]]
+    try:
+        f = gs.fetch_fred() or {}
+        rows = f.get("series", [])[:6]
+        if rows:
+            b.append("· 美国宏观（FRED 官方统计值，非实时，带统计截止期）：")
+            b += ["  - %s %s %s（截至 %s，%s频）" %
+                  (r["name"], r["value"], r["unit"], r["as_of"], r["frequency"]) for r in rows]
+        t = gs.fetch_treasury() or {}
+        if t.get("curve"):
+            b.append("· 美债收益率曲线（美国财政部，%s，日更）：%s" %
+                     (t["date"], "；".join("%s %s%%" % (c["tenor"], c["yield"]) for c in t["curve"][:6])))
+            if t.get("spread_10y_2y") is not None:
+                b.append("  - 10Y-2Y 期限利差：%s 个百分点" % t["spread_10y_2y"])
+        c = gs.fetch_crypto() or {}
+        for coin, d in (c.get("coins") or {}).items():
+            b.append("· %s 多所交叉（%d 家交易所实时）：中位价 %s，所间价差 %s%%，平均涨跌 %s%%" %
+                     (coin, d["exchanges"], d["median"], d["spread_pct"], d["avg_pct"]))
+        e = gs.fetch_ecb_fx() or {}
+        if e.get("date"):
+            b.append("· ECB 官方参考汇率（%s，日更，非实时即期）：USD %s、JPY %s、CNY %s（每 1 EUR）" %
+                     (e["date"], *[dict(e["rates"]).get(k, "—") for k in ("USD", "JPY", "CNY")]))
+    except Exception:
+        pass
+    b.append("【数据口径】行情为延迟数据；宏观为统计发布值；加密为交易所实时接口。"
+             "社交讨论量不等于资金流。以下未接入：期权链、ETF 持仓、A股财务全量、实时交易所行情。")
+    return "\n".join(b)
+
+
 def ai_ask(q):
-    ctx = "\n".join("- %s" % it["title"] for it in NEWS["items"][:25])
-    system = ("你是中文投资者的财经助手。只依据下面给出的近期资讯与公开常识作答，简洁、客观、分点；"
-             "不得编造数字、公司事件或新闻，信息不足时明确说明『当前资讯中没有相关内容』。"
-             "不喊单、不承诺收益。使用简体中文。")
-    return _llm_chat(system, "近期资讯摘要：\n%s\n\n用户问题：%s" % (ctx, q),
-                     CFG["llm"].get("ask_max_tokens", 1400), min_len=50)
+    ctx = _ai_context()
+    system = ("你是 GFIC 全球金融情报中心的 AI 金融助手，服务对象为中文个人投资者。"
+              "作答必须优先引用下面给出的【GFIC 站内真实数据】，并注明来源与数据口径。\n"
+              "铁律：\n"
+              "1. 不得编造任何价格、财务指标、新闻、机构观点或数据来源；站内数据没有的内容，"
+              "明确说明『当前接入数据中没有相关内容』或『该模块尚未接入数据源』。\n"
+              "2. 明确区分【已验证事实】（站内数据）、【常识解释】与【个人观点】，不得混淆。"
+              "延迟行情不得说成实时，年度宏观不得说成当前值。\n"
+              "3. 不喊单、不给目标价、不承诺收益；涉及判断时同时给出风险与反面证据。\n"
+              "4. 简洁、客观、分点、使用简体中文。")
+    return _llm_chat(system, "站内数据：\n%s\n\n用户问题：%s" % (ctx, q),
+                     CFG["llm"].get("ask_max_tokens", 1600), min_len=50)
 
 
 # ---------------- 后台刷新 ----------------
@@ -540,6 +618,29 @@ def _bg_loop():
                 fn()
             except Exception:
                 pass
+        try:
+            gs.check_alerts(QUOTES["items"])
+        except Exception:
+            pass
+        try:
+            gs.save_state()
+        except Exception:
+            pass
+
+
+def _warm_official():
+    """启动时预热官方数据源（并发、失败不影响主服务）。"""
+    for fn in (gs.fetch_fred, gs.fetch_treasury, gs.fetch_ecb_fx,
+               gs.fetch_crypto, gs.fetch_eurostat, gs.fetch_worldbank,
+               gs.fetch_frankfurter, gs.fetch_fiscaldata):
+        try:
+            fn()
+        except Exception:
+            pass
+    try:
+        gs.save_state()
+    except Exception:
+        pass
 
 
 # ---------------- HTTP ----------------
@@ -612,6 +713,7 @@ class H(BaseHTTPRequestHandler):
                 "brief_updated": BRIEF["updated"], "news_count": len(NEWS["items"]),
                 "quotes_count": len(QUOTES["items"]), "news_errors": NEWS["errors"],
                 "llm_enabled": CFG.get("llm", {}).get("enabled", False),
+                "version": "GFIC 2.0", "sources": gs.status_summary(),
                 "time": int(time.time()),
             })
 
@@ -683,6 +785,73 @@ class H(BaseHTTPRequestHandler):
                    kw in s.get("url", "").lower() or kw in s.get("cat", "").lower()][:40]
             return self._send(200, {"news": news, "sources": src})
 
+        # ---------------- GFIC 2.0 新增业务 API ----------------
+        if route == "/api/dashboard":
+            items = NEWS["items"] or collect_news()["items"]
+            qs = QUOTES["items"] or fetch_quotes()["items"]
+            ranked = sorted([x for x in qs if x.get("pct") is not None],
+                            key=lambda x: x["pct"], reverse=True)
+            macro = {}
+            try:
+                m = gs.macro()
+                macro = {k: {"updated": v.get("updated"), "stale": v.get("stale", False)}
+                         for k, v in m["parts"].items()}
+            except Exception:
+                pass
+            return self._send(200, {
+                "total": len(items), "p1": sum(1 for x in items if x.get("priority") == "P1"),
+                "latest": items[0]["published"] if items else 0,
+                "sentiment": sentiment(items), "topics": topics(items, 12),
+                "top": ranked[:5], "bottom": ranked[-5:][::-1],
+                "quote_count": len(qs), "quote_groups": len(CFG["quotes"]["symbols"]),
+                "macro": macro, "sources": gs.status_summary(),
+                "alerts": gs.alerts().get("notifications", [])[:5],
+                "data_policy": {"quotes": "Yahoo 非官方接口，约 15-20 分钟延迟",
+                                "macro": "官方统计发布值，非实时",
+                                "crypto": "交易所官方接口，实时",
+                                "news": "仅标题/摘要/链接，不复制全文"},
+                "updated": int(time.time())})
+
+        if route == "/api/macro":
+            return self._send(200, gs.macro())
+
+        if route == "/api/crypto":
+            return self._send(200, gs.fetch_crypto() or
+                              {"coins": {}, "error": "数字资产数据源暂无数据", "stale": True})
+
+        if route == "/api/sec":
+            sym = q.get("symbol", [""])[0]
+            return self._send(200, gs.fetch_sec(sym) if sym else
+                              {"error": "请提供 symbol，例如 ?symbol=AAPL",
+                               "universe": "SEC EDGAR 在美申报公司（约 1 万家）",
+                               "source": "SEC EDGAR", "coverage": "不含 A股/港股"})
+
+        if route == "/api/sources/status":
+            return self._send(200, {"sources": gs.sources_status(NEWS["errors"], QUOTES["errors"]),
+                                   "summary": gs.status_summary()})
+
+        if route == "/api/sources/probe":
+            return self._send(200, gs.probe(q.get("id", [""])[0]))
+
+        if route == "/api/watchlist":
+            return self._send(200, gs.watchlist())
+
+        if route == "/api/alerts":
+            return self._send(200, gs.alerts())
+
+        if route == "/api/alerts/check":
+            fetch_quotes()
+            return self._send(200, gs.check_alerts(QUOTES["items"]))
+
+        if route == "/api/heatmap":
+            fetch_quotes()
+            cells = [{"symbol": x["symbol"], "name": x["name"], "group": x["group"],
+                      "pct": x["pct"], "price": x["price"], "pct_abs": abs(x["pct"])}
+                     for x in QUOTES["items"] if x.get("pct") is not None]
+            return self._send(200, {"cells": cells, "updated": QUOTES["updated"],
+                                   "source": "Yahoo Finance（延迟行情）",
+                                   "note": "涨红跌绿（中国市场习惯）；色深表示涨跌幅绝对值大小"})
+
         if route == "/api/refresh":
             what = q.get("what", ["all"])[0]
             if what in ("news", "all"):
@@ -691,7 +860,12 @@ class H(BaseHTTPRequestHandler):
                 fetch_quotes()
             if what in ("brief", "all"):
                 build_brief(force=True)
-            return self._send(200, {"ok": True})
+            if what in ("macro", "all"):
+                with gs.LOCK:
+                    for k in list(gs.CACHE):
+                        if not k.startswith("sec:"):
+                            gs.CACHE.pop(k, None)
+            return self._send(200, {"ok": True, "what": what})
 
         self._send(404, {"error": "route not found"})
 
@@ -723,22 +897,47 @@ class H(BaseHTTPRequestHandler):
             return self._send(502, {"error": err}) if err else self._send(200, {"answer": ans})
         if p.path == "/api/brief":
             return self._send(200, build_brief(force=True))
+
+        # ---- GFIC 2.0：数据源管理 / 自选股 / 预警（均为真实持久化操作）----
+        if p.path == "/api/sources/toggle":
+            sid, on = (data.get("id") or "").strip(), bool(data.get("enabled"))
+            res, err = gs.set_enabled(sid, on)
+            return self._send(400, {"error": err}) if err else self._send(200, res)
+
+        if p.path == "/api/sources/probe":
+            return self._send(200, gs.probe((data.get("id") or "").strip()))
+
+        if p.path == "/api/watchlist/save":
+            payload = data.get("data")
+            if not isinstance(payload, dict):
+                return self._send(400, {"error": "data 必须是对象"})
+            return self._send(200, gs.watchlist_save(payload))
+
+        if p.path == "/api/alerts/save":
+            payload = data.get("data")
+            if not isinstance(payload, dict):
+                return self._send(400, {"error": "data 必须是对象"})
+            return self._send(200, gs.alerts_save(payload))
+
         self._send(404, {"error": "route not found"})
 
 
 def main():
     load_config()
     port, host = CFG.get("port", 6789), CFG.get("host", "0.0.0.0")
-    for fn in (collect_news, fetch_quotes, build_brief):
+    for fn in (collect_news, fetch_quotes, build_brief, _warm_official):
         threading.Thread(target=fn, daemon=True).start()
     threading.Thread(target=_bg_loop, daemon=True).start()
     url = "http://localhost:%d/" % port
-    print("=" * 56)
-    print("  环球财经雷达 Finance Radar")
+    print("=" * 62)
+    print("  GFIC 全球金融情报中心 v2.0  (Global Financial Intelligence Center)")
     print("  访问: %s" % url)
-    print("  端口: %d | 代理: %s | AI: %s" % (
+    print("  数据源: %d 个注册 / %d 个已实测可用 / A级官方 %d 个" % (
+        len(gs.REGISTRY), sum(1 for s in gs.REGISTRY if s["status"] == "live"),
+        sum(1 for s in gs.REGISTRY if s["grade"] == "A" and s["status"] == "live")))
+    print("  端口: %d | 代理: %s | AI: %s | 成本: ¥0" % (
         port, CFG.get("proxy") or "直连", "启用" if CFG.get("llm", {}).get("enabled") else "关闭"))
-    print("=" * 56, flush=True)
+    print("=" * 62, flush=True)
     if CFG.get("open_browser", True):
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     srv = ThreadingHTTPServer((host, port), H)

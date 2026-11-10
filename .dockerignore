@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 *.log
 _tmp/
+data/
+.git/
+*.png
+*.tgz
+*.bak

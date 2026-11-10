@@ -6,8 +6,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY server.py config.json sources_catalog.json ./
+COPY server.py gfic_sources.py config.json sources_catalog.json ./
 COPY static ./static
+RUN mkdir -p /app/data
+
+# 业务数据（自选股 / 预警 / 数据源状态 / 成功数据落盘缓存）由 compose 挂载 ./data
+VOLUME ["/app/data"]
 
 EXPOSE 6789
 
