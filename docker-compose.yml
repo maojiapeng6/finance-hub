@@ -1,0 +1,27 @@
+services:
+  finance-radar:
+    build: .
+    image: finance-radar:latest
+    container_name: finance-radar
+    restart: always
+    # 飞牛默认地址池 172.17~172.31 已耗尽，单容器直接用默认 bridge，避免新建网络失败
+    network_mode: bridge
+    ports:
+      - "0.0.0.0:6789:6789"
+    environment:
+      TZ: Asia/Shanghai
+      FR_NO_BROWSER: "1"
+      FR_PROXY: "http://192.168.10.107:7893"
+      FR_LLM_BASE: "http://192.168.10.110:3001/v1"
+      HTTP_PROXY: "http://192.168.10.107:7893"
+      HTTPS_PROXY: "http://192.168.10.107:7893"
+      NO_PROXY: "localhost,127.0.0.1,192.168.10.110,192.168.10.107"
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./sources_catalog.json:/app/sources_catalog.json:ro
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

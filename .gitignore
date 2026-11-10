@@ -1,0 +1,8 @@
+# 本地运行配置含内网地址与网关密钥，禁止纳入任何 git 仓库 / 开源发布副本
+config.json
+config.local.json
+deploy_nas.py
+*.log
+_tmp/
+__pycache__/
+*.pyc
