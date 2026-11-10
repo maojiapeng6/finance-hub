@@ -1,0 +1,219 @@
+/* ============================================================
+   GFIC V2.1 — 投资决策驾驶舱 / 机会雷达 / 易懂模式 / 全站翻译
+   独立样式层：不修改 v2.0 style.css，避免破坏已验收视觉
+   ============================================================ */
+[hidden]{display:none !important}
+
+/* ---- 顶部工具 ---- */
+.v21-sel{
+  height:30px;padding:0 8px;border:1px solid var(--line2);border-radius:8px;
+  background:var(--panel2);color:var(--txt2);font-size:11.5px;outline:none;cursor:pointer;
+}
+.v21-sel:focus{border-color:var(--cyan)}
+.icon-btn.on{background:rgba(77,212,232,.16);border-color:var(--cyan);color:var(--cyan)}
+
+/* ---- 决策驾驶舱四屏 ---- */
+.screen{margin-bottom:20px;scroll-margin-top:84px}
+.screen-head{display:flex;align-items:center;gap:10px;margin:0 0 11px}
+.screen-no{
+  width:24px;height:24px;border-radius:7px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(135deg,rgba(77,212,232,.24),rgba(91,140,255,.18));
+  color:var(--cyan);font:700 11px var(--mono);border:1px solid rgba(77,212,232,.35)
+}
+.screen-head h2{font-size:15.5px;font-weight:700;letter-spacing:.2px}
+.screen-head .sh-sub{font-size:11px;color:var(--txt3);margin-left:auto;text-align:right}
+.screen-divider{height:1px;background:linear-gradient(90deg,var(--line2),transparent);margin:22px 0 18px}
+
+.cockpit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.cockpit-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.cockpit-full{grid-column:1/-1}
+
+/* ---- 机会卡片 ---- */
+.opp-card{
+  background:linear-gradient(160deg,var(--panel),var(--panel2));border:1px solid var(--line);
+  border-radius:var(--radius);padding:13px 14px;cursor:pointer;position:relative;
+  transition:transform .16s,border-color .16s,box-shadow .16s;overflow:hidden
+}
+.opp-card:hover{transform:translateY(-2px);border-color:var(--cyan);box-shadow:var(--shadow)}
+.opp-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--cyan);opacity:.65}
+.opp-card.g-S::before{background:var(--gold)} .opp-card.g-A::before{background:var(--cyan)}
+.opp-card.g-C::before,.opp-card.g-D::before{background:var(--txt3)}
+.opp-top{display:flex;align-items:flex-start;gap:9px}
+.opp-name{font-size:14px;font-weight:700;line-height:1.3}
+.opp-sym{font:11px var(--mono);color:var(--txt3);margin-top:2px}
+.opp-meta{font-size:10.5px;color:var(--txt3);margin-top:3px}
+.opp-score{margin-left:auto;text-align:right;flex:none}
+.grade-badge{
+  display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;
+  font:800 15px var(--mono);border:1px solid var(--line2);background:var(--panel3);color:var(--txt2)
+}
+.g-S .grade-badge{color:var(--gold);border-color:rgba(245,196,81,.55);background:rgba(245,196,81,.11)}
+.g-A .grade-badge{color:var(--cyan);border-color:rgba(77,212,232,.5);background:rgba(77,212,232,.1)}
+.g-D .grade-badge{color:var(--txt3)}
+.opp-score small{display:block;font-size:10px;color:var(--txt3);margin-top:3px}
+.opp-price{display:flex;align-items:baseline;gap:8px;margin:9px 0 7px}
+.opp-price b{font:700 18px var(--mono);letter-spacing:-.4px}
+.opp-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.tag{font-size:10px;padding:2px 7px;border-radius:5px;background:var(--panel3);color:var(--txt2);border:1px solid var(--line)}
+.tag.hot{color:var(--cyan);border-color:rgba(77,212,232,.35);background:rgba(77,212,232,.08)}
+.tag.warn{color:var(--gold);border-color:rgba(245,196,81,.35);background:rgba(245,196,81,.08)}
+.qa-box{border-top:1px dashed var(--line2);padding-top:8px;margin-top:7px}
+.qa-box h5{font-size:11px;color:var(--cyan);margin-bottom:4px;font-weight:700}
+.qa-box.risk h5{color:var(--gold)}
+.qa-box ul{list-style:none;display:flex;flex-direction:column;gap:3px}
+.qa-box li{font-size:11.5px;color:var(--txt2);line-height:1.5;padding-left:11px;position:relative}
+.qa-box li::before{content:'·';position:absolute;left:2px;color:var(--txt3)}
+.qa-concl{margin-top:8px;padding:7px 9px;border-radius:8px;background:var(--panel3);
+  font-size:11.5px;color:var(--txt);border-left:2px solid var(--purple)}
+.opp-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;
+  font-size:10px;color:var(--txt3)}
+.miss-note{font-size:10.5px;color:var(--txt3);margin-top:6px;line-height:1.5}
+
+/* ---- 榜单 / 表格 ---- */
+.v21-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.v21-tab{font-size:11px;padding:5px 10px;border-radius:7px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--txt2);cursor:pointer}
+.v21-tab:hover{border-color:var(--cyan)}
+.v21-tab.on{background:rgba(77,212,232,.14);border-color:var(--cyan);color:var(--cyan)}
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:12px}
+table.tbl th{text-align:left;font-size:10.5px;color:var(--txt3);font-weight:600;
+  padding:7px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
+table.tbl td{padding:7px 8px;border-bottom:1px solid var(--line);color:var(--txt2);white-space:nowrap}
+table.tbl tr.clickable{cursor:pointer}
+table.tbl tr.clickable:hover td{background:rgba(77,212,232,.06);color:var(--txt)}
+table.tbl td.r,table.tbl th.r{text-align:right}
+table.tbl .nm{color:var(--txt);font-weight:600}
+.rank-no{font:11px var(--mono);color:var(--txt3)}
+
+/* ---- 风险 / 快讯 ---- */
+.risk-item{display:flex;gap:9px;padding:8px 10px;border-radius:9px;background:var(--panel2);
+  border:1px solid var(--line);margin-bottom:7px;font-size:11.5px;color:var(--txt2);line-height:1.5}
+.risk-item .ri-ico{color:var(--gold);flex:none}
+.flash-item{display:flex;gap:10px;padding:9px 10px;border-bottom:1px solid var(--line);cursor:pointer;align-items:flex-start}
+.flash-item:hover{background:rgba(77,212,232,.05)}
+.flash-item .fi-time{font:10.5px var(--mono);color:var(--txt3);width:74px;flex:none;padding-top:2px}
+.flash-item .fi-title{font-size:12.5px;color:var(--txt);line-height:1.45;flex:1}
+.flash-item .fi-meta{font-size:10px;color:var(--txt3);margin-top:3px;display:flex;gap:7px;flex-wrap:wrap}
+
+/* ---- 可点标签 / 术语 ---- */
+.prio-badge{font-size:10px;padding:2px 7px;border-radius:5px;cursor:pointer;border:1px solid var(--line2);
+  background:var(--panel3);color:var(--txt2)}
+.prio-badge.p1{color:var(--up);border-color:rgba(255,77,94,.4)}
+.prio-badge.p2{color:var(--gold);border-color:rgba(245,196,81,.35)}
+.prio-badge.p3{color:var(--txt3)}
+.prio-badge:hover{border-color:var(--cyan);color:var(--cyan)}
+.term-link{color:var(--cyan);border-bottom:1px dashed rgba(77,212,232,.5);cursor:pointer}
+.term-link:hover{color:var(--purple)}
+.term-chip{display:inline-block;font-size:10.5px;padding:3px 8px;margin:2px 4px 2px 0;border-radius:6px;
+  background:var(--panel3);border:1px solid var(--line);color:var(--cyan);cursor:pointer}
+.term-chip:hover{border-color:var(--cyan)}
+.easy-explain{margin-top:7px;padding:8px 10px;border-radius:8px;
+  background:rgba(91,140,255,.07);border-left:2px solid var(--blue);font-size:11.5px;color:var(--txt2);line-height:1.55}
+.easy-explain b{color:var(--cyan)}
+
+/* ---- 弹窗 ---- */
+.v21-modal{width:min(620px,92vw);max-height:82vh;display:flex;flex-direction:column;
+  background:var(--panel);border:1px solid var(--line2);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.vm-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--line2)}
+.vm-head b{font-size:14px}
+.vm-head button{color:var(--txt3);font-size:16px;padding:2px 6px}
+.vm-head button:hover{color:var(--txt)}
+.vm-body{padding:14px 16px;overflow-y:auto}
+.vm-row{margin-bottom:11px}
+.vm-row h5{font-size:11px;color:var(--cyan);margin-bottom:3px}
+.vm-row p{font-size:12.5px;color:var(--txt2);line-height:1.65}
+.vm-kv{display:grid;grid-template-columns:96px 1fr;gap:5px 10px;font-size:12px;margin-bottom:12px}
+.vm-kv span{color:var(--txt3)}
+.vm-kv b{color:var(--txt);font-weight:600}
+
+/* ---- 右侧今日总结 ---- */
+.rb-daily{border-color:rgba(77,212,232,.28)}
+.daily-body{max-height:none}
+.daily-block{margin-bottom:10px;padding-bottom:9px;border-bottom:1px dashed var(--line)}
+.daily-block:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.daily-block h5{font-size:10.5px;color:var(--cyan);letter-spacing:.4px;margin-bottom:5px;font-weight:700}
+.daily-one{font-size:12.5px;line-height:1.6;color:var(--txt)}
+.daily-ev{font-size:11.5px;color:var(--txt2);line-height:1.5;padding:5px 0;cursor:pointer;border-bottom:1px dashed var(--line)}
+.daily-ev:hover{color:var(--cyan)}
+.daily-ev small{display:block;color:var(--txt3);font-size:10px;margin-top:2px}
+.daily-risk{font-size:11.5px;color:var(--txt2);line-height:1.5;padding-left:12px;position:relative;margin-bottom:3px}
+.daily-risk::before{content:'!';position:absolute;left:0;color:var(--gold)}
+.temp-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;
+  background:var(--panel3);border:1px solid var(--line2);font-size:12px;font-weight:700;color:var(--cyan)}
+.temp-note{font-size:10px;color:var(--txt3);margin-top:5px;line-height:1.5}
+/* 右侧栏独立滚动，不影响主区 */
+.rightbar{max-height:calc(100vh - 118px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.brief-body{max-height:260px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.rightbar::-webkit-scrollbar,.brief-body::-webkit-scrollbar,.vm-body::-webkit-scrollbar{width:6px}
+.rightbar::-webkit-scrollbar-thumb,.brief-body::-webkit-scrollbar-thumb,.vm-body::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+
+/* ---- 详情页 ---- */
+.detail-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.detail-back{font-size:11.5px;color:var(--cyan);padding:5px 10px;border:1px solid var(--line2);border-radius:7px;cursor:pointer;white-space:nowrap}
+.detail-back:hover{border-color:var(--cyan)}
+.detail-title{font-size:17px;font-weight:700;line-height:1.4}
+.detail-sub{font-size:11px;color:var(--txt3);margin-top:4px}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.detail-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px}
+.detail-card h3{font-size:12.5px;color:var(--cyan);margin-bottom:9px;font-weight:700}
+.detail-card p{font-size:12px;color:var(--txt2);line-height:1.65;margin-bottom:6px}
+.kv-list{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:12px}
+.kv-list span{color:var(--txt3)} .kv-list b{color:var(--txt);font-weight:600}
+.bilingual{border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-top:7px;background:var(--panel2)}
+.bilingual .bl-label{font-size:10px;color:var(--cyan);margin-bottom:4px}
+.bilingual .bl-orig{font-size:11.5px;color:var(--txt3);line-height:1.55}
+.bilingual .bl-trans{font-size:12.5px;color:var(--txt);line-height:1.6}
+.trans-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.notice-box{padding:9px 11px;border-radius:8px;background:rgba(245,196,81,.08);
+  border:1px solid rgba(245,196,81,.28);font-size:11.5px;color:var(--txt2);line-height:1.6;margin:10px 0}
+
+/* ---- 术语词典视图 ---- */
+.glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px}
+.gloss-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 12px;cursor:pointer}
+.gloss-card:hover{border-color:var(--cyan)}
+.gloss-card b{font-size:13px;color:var(--cyan)}
+.gloss-card .gc-zh{font-size:11px;color:var(--txt3);margin-left:6px}
+.gloss-card p{font-size:11.5px;color:var(--txt2);line-height:1.55;margin-top:6px}
+.gloss-card .gc-fav{float:right;font-size:13px;color:var(--txt3)}
+.gloss-card .gc-fav.on{color:var(--gold)}
+
+/* ---- 响应式：1920 / 1536 / 1366 / 平板 / 手机 ---- */
+@media(min-width:1800px){ .cockpit-grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+@media(max-width:1536px){ .cockpit-3{grid-template-columns:repeat(2,minmax(0,1fr))} .sh-sub{max-width:46%} }
+@media(max-width:1366px){ .cockpit-grid{grid-template-columns:repeat(2,minmax(0,1fr))} .top-actions{gap:5px} }
+@media(max-width:1100px){ .cockpit-grid,.cockpit-3{grid-template-columns:1fr} .rightbar{max-height:none} }
+@media(max-width:760px){
+  .screen-head{flex-wrap:wrap} .screen-head .sh-sub{display:none}
+  .cockpit-grid,.cockpit-3,.detail-grid,.glossary-grid{grid-template-columns:1fr}
+  .flash-item{flex-wrap:wrap} .flash-item .fi-time{width:auto}
+  .v21-sel{font-size:10px;padding:0 4px;height:28px}
+  .top-actions .search-trigger span{display:none}
+  .opp-price b{font-size:16px}
+  .vm-kv{grid-template-columns:80px 1fr}
+  .rightbar{max-height:none}
+}
+@media(max-width:420px){
+  .opp-top{flex-wrap:wrap} .opp-score{margin-left:0}
+  .v21-tabs{gap:4px} .v21-tab{padding:4px 7px;font-size:10px}
+}
+
+/* V2.0 遗留响应式缺陷：<=980px 时侧栏 position:fixed 脱离网格流，
+   但 .app-shell 仍是两列「0 minmax(0,1fr)」，导致 .main-col 落到 0 宽的第一列，
+   页面被挤成一条竖排文字的窄列（平板和手机都中招）。这里改为单列。 */
+@media(max-width:980px){
+  .app-shell{grid-template-columns:minmax(0,1fr)}
+}
+
+/* V2.1 窄屏修复：顶栏工具栏在手机宽度下原本 401px 且 flex:none，会把整页撑成
+   横向滚动。改为「可横向滑动的条带」，所有按钮保留且可点，页面本身不溢出。 */
+@media(max-width:420px){
+  .topbar{gap:6px;padding:0 8px;overflow:hidden}
+  .page-title{flex:0 1 auto;min-width:0;max-width:92px}
+  .page-title h1{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top-actions{flex:1 1 auto;min-width:0;gap:5px;
+    overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .top-actions::-webkit-scrollbar{display:none}
+  .top-actions > *{flex:0 0 auto}
+  .live-pill{display:none}
+}

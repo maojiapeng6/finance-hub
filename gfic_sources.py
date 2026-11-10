@@ -778,7 +778,9 @@ def fetch_sec(symbol):
     key = "sec:" + symbol
     with LOCK:
         c = CACHE.get(key)
-        if c and time.time() - c["ts"] < 3600:
+        # 降级结果（公司/公告成功但 companyfacts 失败）只缓存 60 秒，避免偶发
+        # 网络抖动把「0 项财务」固化一小时；完整结果按 1 小时缓存。
+        if c and time.time() - c["ts"] < (60 if c.get("partial") else 3600):
             return c["data"]
     m = _sec_tickers()
     info = m.get(symbol)
@@ -813,12 +815,23 @@ def fetch_sec(symbol):
             out["sic"] = d.get("sicDescription", "")
         except Exception:
             pass
-    # companyfacts 单文件可达数十 MB（Apple 实测 >3MB），必须放宽读取上限，否则 JSON 被截断
-    txt2 = _get("sec_edgar", "https://data.sec.gov/api/xbrl/companyfacts/CIK%s.json" % cik,
-                timeout=60, expecting=_j, limit=60000000)
-    if txt2:
+    # companyfacts 单文件可达数十 MB（Apple 实测 >3MB），必须放宽读取上限，否则 JSON 被截断。
+    # 代理偶发返回被截断的 200 响应时 json.loads 会炸；此处解析失败立即再取一次，
+    # 避免把「公司/公告成功但 0 财务」当成正常结果。
+    cf_url = "https://data.sec.gov/api/xbrl/companyfacts/CIK%s.json" % cik
+    cf = None
+    for _ in range(2):
+        txt2 = _get("sec_edgar", cf_url, timeout=60, expecting=_j, limit=60000000)
+        if not txt2:
+            continue
         try:
-            d = json.loads(txt2)
+            cf = json.loads(txt2)
+            break
+        except Exception:
+            cf = None
+    if cf:
+        try:
+            d = cf
             us = (d.get("facts", {}) or {}).get("us-gaap", {}) or {}
             keys = ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax",
                     "NetIncomeLoss", "Assets", "Liabilities", "StockholdersEquity",
@@ -852,8 +865,12 @@ def fetch_sec(symbol):
                                  "仅保留与最新申报期同代的数据；不同公司口径可能不同）")
         except Exception:
             pass
+    if not out.get("facts"):
+        out["partial"] = True
+        out["facts"] = []
+        out["facts_missing_reason"] = "SEC companyfacts 本次未取到（网络抖动/限流/该标签无申报值），稍后自动重试；不缓存为成功数据"
     with LOCK:
-        CACHE[key] = {"data": out, "ts": time.time()}
+        CACHE[key] = {"data": out, "ts": time.time(), "partial": bool(out.get("partial"))}
     return out
 
 

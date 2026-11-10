@@ -1,0 +1,380 @@
+{
+  "base": "http://192.168.10.110:6789",
+  "time": "2026-11-11 01:40:30",
+  "passed": [
+    {
+      "name": "V2.1 扩展层已加载",
+      "detail": "object"
+    },
+    {
+      "name": "首屏内容非空（非纯文本/非骨架屏）",
+      "detail": "6298 字"
+    },
+    {
+      "name": "驾驶舱卡片已渲染",
+      "detail": "9 张"
+    },
+    {
+      "name": "驾驶舱含「机会」板块",
+      "detail": "机会"
+    },
+    {
+      "name": "驾驶舱含「风险」板块",
+      "detail": "风险"
+    },
+    {
+      "name": "驾驶舱含「依据」板块",
+      "detail": "依据"
+    },
+    {
+      "name": "驾驶舱含「数据口径」板块",
+      "detail": "数据口径"
+    },
+    {
+      "name": "右侧 AI 今日市场总结有内容",
+      "detail": "1327 字"
+    },
+    {
+      "name": "导航项数量 >= 24（原 22 + 2）",
+      "detail": "24"
+    },
+    {
+      "name": "AI 投资机会入口存在",
+      "detail": ""
+    },
+    {
+      "name": "金融术语词典入口存在",
+      "detail": ""
+    },
+    {
+      "name": "原有 dashboard/news/macro 全部保留",
+      "detail": "dashboard,news,macro,sources,about"
+    },
+    {
+      "name": "机会雷达视图已渲染",
+      "detail": "7721 字"
+    },
+    {
+      "name": "机会雷达含「评分」",
+      "detail": ""
+    },
+    {
+      "name": "机会雷达含「风险」",
+      "detail": ""
+    },
+    {
+      "name": "机会雷达含「来源」",
+      "detail": ""
+    },
+    {
+      "name": "机会雷达含「不构成投资建议」",
+      "detail": ""
+    },
+    {
+      "name": "机会雷达含「成绩单」",
+      "detail": ""
+    },
+    {
+      "name": "机会榜有真实数据行",
+      "detail": "8 张机会卡"
+    },
+    {
+      "name": "评分等级有真实区分度（非全部 D）",
+      "detail": "S,A,B,B,C,C,C,D"
+    },
+    {
+      "name": "机会榜含 SEC 官方财务依据",
+      "detail": "含"
+    },
+    {
+      "name": "机会榜含诚实免责声明",
+      "detail": ""
+    },
+    {
+      "name": "研究周期切换按钮有真实功能",
+      "detail": "short"
+    },
+    {
+      "name": "市场筛选按钮有真实功能",
+      "detail": "美股"
+    },
+    {
+      "name": "词典视图已渲染",
+      "detail": "1311 字"
+    },
+    {
+      "name": "术语链接可点击",
+      "detail": "23 个"
+    },
+    {
+      "name": "点击术语弹出通俗解释",
+      "detail": "307 字"
+    },
+    {
+      "name": "术语含「数值高低 / 市场影响」说明",
+      "detail": ""
+    },
+    {
+      "name": "术语搜索框可过滤",
+      "detail": "过滤后 2 项"
+    },
+    {
+      "name": "P1/P2/P3 等级弹窗含判定规则",
+      "detail": "442 字"
+    },
+    {
+      "name": "小白易懂模式可切换",
+      "detail": "1"
+    },
+    {
+      "name": "易懂模式确实注入大白话解释",
+      "detail": "1 处"
+    },
+    {
+      "name": "hash 详情路由可渲染股票详情",
+      "detail": "1687 字"
+    },
+    {
+      "name": "股票详情含「风险」",
+      "detail": ""
+    },
+    {
+      "name": "股票详情含「来源」",
+      "detail": ""
+    },
+    {
+      "name": "股票详情含「多头」",
+      "detail": ""
+    },
+    {
+      "name": "股票详情含「空头」",
+      "detail": ""
+    },
+    {
+      "name": "/stocks/AAPL 直达 URL 渲染详情",
+      "detail": "1687 字"
+    },
+    {
+      "name": "直达 URL 被规范化为详情 hash",
+      "detail": "#detail/stocks/AAPL"
+    },
+    {
+      "name": "/news/<真实id> 直达渲染详情",
+      "detail": "1191 字 / id=d8cf006e8d7a"
+    },
+    {
+      "name": "后退回到上一视图",
+      "detail": "#dashboard"
+    },
+    {
+      "name": "前进可回到词典视图",
+      "detail": "#glossary"
+    },
+    {
+      "name": "刷新后仍保持路由且正常渲染",
+      "detail": "#glossary"
+    },
+    {
+      "name": "语言切换到日语后 html.lang 生效",
+      "detail": "ja"
+    },
+    {
+      "name": "语言偏好已持久化",
+      "detail": "ja"
+    },
+    {
+      "name": "固定文案走本地词典（不依赖外部翻译）",
+      "detail": "{\"lang\":\"ja\",\"name\":\"日本語\",\"total_keys\":74,\"coverage\":\"全站固定文案词典；动态内容按需 AI 翻译并缓存\",\"fallback\""
+    },
+    {
+      "name": "翻译工具栏按钮存在",
+      "detail": ""
+    },
+    {
+      "name": "资讯详情有逐条翻译入口",
+      "detail": ""
+    },
+    {
+      "name": "双语对照含「原文 / 译文」",
+      "detail": "173 字"
+    },
+    {
+      "name": "译文失败时诚实回退（不编造）",
+      "detail": "173 字"
+    },
+    {
+      "name": "原文显示可切换",
+      "detail": ""
+    },
+    {
+      "name": "翻译 API 返回结构化结果",
+      "detail": "{'text': 'AAPL rose 3.25% to $ 227.50 in 2026', 'original': 'AAPL rose 3.25% to $ 227.50 in 2026', 'lang': 'ja', 'cached"
+    },
+    {
+      "name": "翻译保留原始数字（或诚实回退）",
+      "detail": "{'text': 'AAPL rose 3.25% to $ 227.50 in 2026', 'original': 'AAPL rose 3.25% to $ 227.50 in 2026', 'lang': 'ja', 'cached"
+    },
+    {
+      "name": "深浅主题可切换",
+      "detail": "light"
+    },
+    {
+      "name": "分辨率 1920 视口生效",
+      "detail": "clientWidth=1905 / 设定=1920"
+    },
+    {
+      "name": "分辨率 1920 主内容区可见（非 0 宽塌陷）",
+      "detail": "viewArea=1315px / clientWidth=1905px / 阈值 48%"
+    },
+    {
+      "name": "分辨率 1920 顶栏铺满视口",
+      "detail": "topbar=1669px"
+    },
+    {
+      "name": "分辨率 1920 无横向溢出",
+      "detail": "scrollWidth=1905 clientWidth=1905"
+    },
+    {
+      "name": "分辨率 1920 内容仍可见",
+      "detail": "6399 字"
+    },
+    {
+      "name": "分辨率 1536 视口生效",
+      "detail": "clientWidth=1521 / 设定=1536"
+    },
+    {
+      "name": "分辨率 1536 主内容区可见（非 0 宽塌陷）",
+      "detail": "viewArea=931px / clientWidth=1521px / 阈值 48%"
+    },
+    {
+      "name": "分辨率 1536 顶栏铺满视口",
+      "detail": "topbar=1285px"
+    },
+    {
+      "name": "分辨率 1536 无横向溢出",
+      "detail": "scrollWidth=1521 clientWidth=1521"
+    },
+    {
+      "name": "分辨率 1536 内容仍可见",
+      "detail": "6399 字"
+    },
+    {
+      "name": "分辨率 1366 视口生效",
+      "detail": "clientWidth=1351 / 设定=1366"
+    },
+    {
+      "name": "分辨率 1366 主内容区可见（非 0 宽塌陷）",
+      "detail": "viewArea=787px / clientWidth=1351px / 阈值 48%"
+    },
+    {
+      "name": "分辨率 1366 顶栏铺满视口",
+      "detail": "topbar=1115px"
+    },
+    {
+      "name": "分辨率 1366 无横向溢出",
+      "detail": "scrollWidth=1351 clientWidth=1351"
+    },
+    {
+      "name": "分辨率 1366 内容仍可见",
+      "detail": "6399 字"
+    },
+    {
+      "name": "分辨率 平板768 视口生效",
+      "detail": "clientWidth=753 / 设定=768"
+    },
+    {
+      "name": "分辨率 平板768 主内容区可见（非 0 宽塌陷）",
+      "detail": "viewArea=725px / clientWidth=753px / 阈值 70%"
+    },
+    {
+      "name": "分辨率 平板768 顶栏铺满视口",
+      "detail": "topbar=753px"
+    },
+    {
+      "name": "分辨率 平板768 无横向溢出",
+      "detail": "scrollWidth=753 clientWidth=753"
+    },
+    {
+      "name": "分辨率 平板768 内容仍可见",
+      "detail": "6399 字"
+    },
+    {
+      "name": "分辨率 手机390 视口生效",
+      "detail": "clientWidth=390 / 设定=390"
+    },
+    {
+      "name": "分辨率 手机390 主内容区可见（非 0 宽塌陷）",
+      "detail": "viewArea=372px / clientWidth=390px / 阈值 70%"
+    },
+    {
+      "name": "分辨率 手机390 顶栏铺满视口",
+      "detail": "topbar=390px"
+    },
+    {
+      "name": "分辨率 手机390 无横向溢出",
+      "detail": "scrollWidth=390 clientWidth=390"
+    },
+    {
+      "name": "分辨率 手机390 内容仍可见",
+      "detail": "6298 字"
+    },
+    {
+      "name": "视图 news 正常渲染",
+      "detail": "4934 字"
+    },
+    {
+      "name": "视图 news 含真实数据标记「资讯」",
+      "detail": ""
+    },
+    {
+      "name": "视图 macro 正常渲染",
+      "detail": "3258 字"
+    },
+    {
+      "name": "视图 macro 含真实数据标记「FRED」",
+      "detail": ""
+    },
+    {
+      "name": "视图 sources 正常渲染",
+      "detail": "6948 字"
+    },
+    {
+      "name": "视图 sources 含真实数据标记「数据源」",
+      "detail": ""
+    },
+    {
+      "name": "视图 quotes 正常渲染",
+      "detail": "2250 字"
+    },
+    {
+      "name": "无 JS 运行时异常 / 控制台错误",
+      "detail": "0 条"
+    },
+    {
+      "name": "站内接口复验全部 200（早期失败为导航中断）",
+      "detail": ""
+    }
+  ],
+  "failed": [],
+  "notes": [
+    "浏览器网络级日志 2 条（首 2 条：LOG: Failed to load resource: net::ERR_PROXY_CONNECTION_FAILED | LOG: Failed to load resource: net::ERR_PROXY_CONNECTION_FAILED）",
+    "失败请求 2 个：https://images.mktw.net/im-19226741 (net::ERR_PROXY_CONNECTION_FAILED) | https://images.mktw.net/im-30894465 (net::ERR_PROXY_CONNECTION_FAILED)"
+  ],
+  "browser_errors": [
+    "LOG: Failed to load resource: net::ERR_PROXY_CONNECTION_FAILED",
+    "LOG: Failed to load resource: net::ERR_PROXY_CONNECTION_FAILED"
+  ],
+  "screenshots": [
+    "01_驾驶舱.png",
+    "02_机会雷达.png",
+    "03_术语词典.png",
+    "04_股票详情.png",
+    "05_资讯详情.png",
+    "06_浅色主题.png",
+    "07_1920.png",
+    "07_平板768.png",
+    "07_手机390.png",
+    "08_翻译双语.png",
+    "_edge_profile"
+  ]
+}

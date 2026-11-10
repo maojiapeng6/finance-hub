@@ -15,7 +15,7 @@ GFIC 全球金融情报中心 (Global Financial Intelligence Center) — v2.0
 
 原则：不虚构行情、不模拟新闻、不把延迟数据标为实时；无数据显示「暂无数据」。
 """
-import json, os, re, time, html, threading, webbrowser
+import json, os, re, time, html, hashlib, threading, webbrowser
 import urllib.request, urllib.error, urllib.parse
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -23,6 +23,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import gfic_sources as gs
+import gfic_research as gr
+import gfic_i18n as i18n
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE, "config.json")
@@ -56,6 +58,8 @@ def load_config():
     if os.environ.get("FR_LLM_KEY"):
         CFG["llm"]["api_key"] = os.environ["FR_LLM_KEY"]
     gs.init(CFG)
+    gr.init(CFG)
+    i18n.init(CFG)
 
 
 # ---------------- 网络层：直连优先，失败回退代理 ----------------
@@ -238,6 +242,18 @@ def enrich(it):
               "A股", "港股", "关税", "半导体", "中国经济", "美债", "OPEC", "ETF"]:
         if w.lower() in title.lower():
             kws.append(w)
+    # V2.1：稳定 id 供详情路由 /#/news/<id> 使用；等级附可解释规则
+    it["id"] = hashlib.md5(((link or title) + "|" + (it.get("source") or "")).encode("utf-8")).hexdigest()[:12]
+    rule_prio, rule_reason, rule_hits = i18n.priority_of(it)
+    lvl = i18n.PRIORITY_RULES.get(it.get("priority") or "P2", i18n.PRIORITY_RULES["P2"])
+    it["priority_model"] = {
+        "assigned": it.get("priority") or "P2", "name": lvl["name"], "desc": lvl["desc"],
+        "rule": lvl["rule"],
+        "why_this_item": "该资讯来自「%s」级来源；关键词规则复核：%s" % (it.get("priority") or "P2", rule_reason),
+        "keyword_check": rule_prio, "keyword_hits": rule_hits,
+        "model": "来源分级（官方>专业媒体>社区）+ 标题关键词分级（系统级>行业公司级>一般）",
+        "note": "等级只表示潜在影响范围，不代表涨跌方向或投资建议",
+    }
     it.update({
         "domain": domain, "site": site, "hint": hint, "symbols": syms, "tags": kws[:3],
         "search": "https://www.bing.com/news/search?q=" + urllib.parse.quote(title[:60]),
@@ -643,6 +659,224 @@ def _warm_official():
         pass
 
 
+# ---------------- V2.1 详情页 / 决策驾驶舱 / 研究雷达 ----------------
+RESEARCH = {"opportunities": None, "ts": 0, "leaders": {}, "quality": None, "quality_ts": 0}
+
+
+def _research_cached(ttl=600):
+    with LOCK:
+        if RESEARCH["opportunities"] and time.time() - RESEARCH["ts"] < ttl:
+            return RESEARCH["opportunities"]
+    d = gr.opportunities(news_items=NEWS["items"] or [], limit=12, gs=gs, with_fin=True)
+    try:
+        gr.snapshot(d["items"])
+    except Exception:
+        pass
+    with LOCK:
+        RESEARCH["opportunities"] = d
+        RESEARCH["ts"] = time.time()
+    return d
+
+
+def _warm_research():
+    """启动预热：并发抓真实 1 年日线 + 预热 SEC 官方财务缓存，避免首屏等待。
+
+    SEC 财务是机会雷达 60% 权重的依据；这里在后台串行拉取（遵守 SEC 频率），
+    预热完成后主动让机会雷达缓存失效，下一次请求即带上真实财务重算评分。
+    失败不影响主服务，评分会如实保持低置信度。
+    """
+    try:
+        time.sleep(6)
+        gr.batch_histories([x["symbol"] for x in gr.UNIVERSE])
+    except Exception:
+        pass
+    try:
+        gr.quality(gs=gs)
+        with LOCK:
+            RESEARCH["ts"] = 0
+            RESEARCH["quality"] = None
+    except Exception:
+        pass
+
+
+def daily_summary():
+    """今日市场总结：一句话 / 三个关键事件 / 机会 / 风险 / 温度。
+    全部由站内真实数据 + 可解释规则生成，不让 LLM 自由发挥。"""
+    items = NEWS["items"] or collect_news()["items"]
+    qs = QUOTES["items"] or fetch_quotes()["items"]
+    sen = sentiment(items)
+    ranked = sorted([x for x in qs if x.get("pct") is not None], key=lambda x: x["pct"], reverse=True)
+    up = sum(1 for x in qs if (x.get("pct") or 0) > 0)
+    down = sum(1 for x in qs if (x.get("pct") or 0) < 0)
+    top, bot = (ranked[0] if ranked else None), (ranked[-1] if ranked else None)
+    one = ("今天共聚合 %d 条去重资讯（P1 官方 %d 条），%d 项行情标的中 %d 涨 / %d 跌" %
+           (len(items), sum(1 for x in items if x.get("priority") == "P1"), len(qs), up, down))
+    if top and bot:
+        one += "；%s %+.2f%% 领涨，%s %+.2f%% 领跌" % (top["name"], top["pct"], bot["name"], bot["pct"])
+    one += "。"
+
+    p1 = [x for x in items if x.get("priority") == "P1"][:3] or items[:3]
+    events = []
+    for x in p1:
+        syms = [s["name"] for s in (x.get("symbols") or [])]
+        events.append({
+            "id": x.get("id"), "title": x.get("title"), "source": x.get("source"),
+            "published": x.get("published"), "link": x.get("link"),
+            "priority": x.get("priority"), "priority_reason": (x.get("priority_model") or {}).get("why_this_item"),
+            "what": "报道原文标题：%s" % (x.get("title") or ""),
+            "why": "被列为 %s：%s" % (x.get("priority"), (x.get("priority_model") or {}).get("desc", "")),
+            "impact": "可能影响：%s" % (x.get("category") or "跨市场"),
+            "assets": syms or ["请点原文查看涉及标的"],
+            "plain": x.get("hint") or "点开原文查看完整报道；本站不替原文补充未写明的事实。",
+        })
+    try:
+        op = _research_cached()["items"][:3]
+    except Exception:
+        op = []
+    opps = [{"symbol": x["symbol"], "name": x["name"], "grade": x["score"]["grade"],
+             "score": x["score"]["composite"], "confidence": x["score"]["confidence"],
+             "why": x["why"][:1], "conclusion": x["conclusion"]} for x in op]
+
+    risks = []
+    if bot and bot["pct"] <= -1.5:
+        risks.append("今日领跌资产 %s %+.2f%%（真实延迟行情）" % (bot["name"], bot["pct"]))
+    vix = next((x for x in qs if "VIX" in str(x.get("symbol", "")).upper()), None)
+    if vix and vix.get("price"):
+        risks.append("VIX 波动率指数 %s（%s）" % (vix["price"], "偏高，注意波动" if vix["price"] > 20 else "处于相对温和区间"))
+    war = [x for x in items if re.search(r"war|战争|sanction|制裁|conflict|冲突", x.get("title", ""), re.I)][:1]
+    if war:
+        risks.append("地缘相关报道：%s" % war[0]["title"][:70])
+    risks.append("行情为 Yahoo 非官方接口、延迟 15–20 分钟；宏观为统计发布值，不能当实时数据用")
+    risks.append("估值 / 行业景气 / 全市场财务未接入，机会榜置信度有限")
+
+    score = sen.get("score", 0) or 0
+    breadth = (up - down) / max(1, len(qs))
+    if (vix and (vix.get("price") or 0) > 25) or abs(breadth) > 0.6:
+        state, label = "high_vol", "高波动"
+    elif score > 15 and breadth > 0.1:
+        state, label = "strong", "偏强"
+    elif score < -15 or breadth < -0.25:
+        state, label = "weak", "偏弱"
+    elif war or score < -5:
+        state, label = "risk_up", "风险上升"
+    else:
+        state, label = "neutral", "中性"
+    temp = {"state": state, "label": label,
+            "basis": "资讯关键词情绪分 %s（基于最新 %d 条标题）+ 行情涨跌家数 %d 涨 / %d 跌%s" %
+                     (score, sen.get("total", 0), up, down,
+                      (" + VIX %s" % vix["price"]) if vix else ""),
+            "note": "仅为报道倾向与涨跌广度的机械统计，不等于资金流向或未来涨跌"}
+
+    return {"one_sentence": one, "three_events": events, "opportunities": opps,
+            "risks": risks, "temperature": temp,
+            "sources": ["Google News RSS / 直连 RSS（真实资讯）", "Yahoo Finance v8 chart（延迟行情）",
+                        "SEC EDGAR / FRED（官方数据）"],
+            "disclaimer": "本总结为站内真实数据的规则化归纳，不构成投资建议",
+            "updated": int(time.time())}
+
+
+def _plain_explain(item):
+    """小白解释：只基于原文已出现的信息，不推断未写明的因果。"""
+    t, cat = item.get("title") or "", item.get("category") or "综合"
+    q = [
+        ("这条新闻是什么意思？", "标题原意：%s。%s" % (t, item.get("hint") or "点开原文可读完整报道。")),
+        ("为什么会发生？", "原文标题未写明原因时本站不替它推断。可点「打开原文」查看报道给出的背景；也可点「搜相关」看同一话题的其他来源。"),
+        ("对普通投资者有什么影响？", "这条资讯被归入「%s」。分类只表示话题范围，不代表一定涨跌；影响需结合原文与其它报道判断。" % cat),
+        ("可能影响哪些股票或行业？", ("标题中可识别的关联标的：" + "、".join(s["name"] for s in item.get("symbols", []))) if item.get("symbols") else "标题中未识别出明确标的，本站不猜测关联股票。"),
+        ("我应该关注什么？", "先点原文核实事实，再用「搜相关」比对多家报道；数据口径与风险提示见页面底部。"),
+    ]
+    return [{"q": a, "a": b} for a, b in q]
+
+
+def detail_news(nid):
+    items = NEWS["items"] or collect_news()["items"]
+    it = next((x for x in items if x.get("id") == nid), None)
+    if not it:
+        return {"error": "未找到该快讯（可能已过期或链接失效）", "id": nid, "suggest": "返回资讯列表"}
+    words = [w for w in re.split(r"[\s,，、:：\-—]+", it.get("title") or "") if len(w) > 3][:4]
+    related = [{"id": x.get("id"), "title": x.get("title"), "source": x.get("source"),
+                "published": x.get("published"), "link": x.get("link")}
+               for x in items if x.get("id") != nid and
+               any(w.lower() in (x.get("title") or "").lower() for w in words)][:6]
+    same_source = [{"id": x.get("id"), "title": x.get("title"), "published": x.get("published")}
+                   for x in items if x.get("id") != nid and x.get("source") == it.get("source")][:5]
+    return {"type": "news", "item": it, "plain": _plain_explain(it),
+            "priority": it.get("priority_model") or i18n.priority_definition(),
+            "background": "事件背景以原文为准；本站不补充原文未写明的背景。同话题其它报道见「相关报道」。",
+            "countries": [it.get("region") or "未标注"], "industries": [it.get("category") or "未分类"],
+            "symbols": it.get("symbols") or [], "tags": it.get("tags") or [],
+            "related": related, "same_source": same_source,
+            "other_sources": "点「搜相关」可跨全部已聚合资讯比对同一话题的其它来源",
+            "search": it.get("search"), "ai_summary": it.get("hint"),
+            "historical": "历史同类事件：本站未接入历史事件库，不做类比推断",
+            "disclaimer": "以上解释不歪曲原始信息；未写明的原因、影响与数据一律不补充。",
+            "updated": int(time.time())}
+
+
+def detail_asset(symbol):
+    symbol = (symbol or "").upper()
+    q = QUOTES["items"] or fetch_quotes()["items"]
+    item = next((x for x in q if str(x.get("symbol", "")).upper() == symbol), None)
+    if not item:
+        return {"error": "未找到该标的的真实行情", "symbol": symbol}
+    return {"type": "asset", "item": item,
+            "note": "Yahoo Finance v8 chart 非官方接口，延迟约 15–20 分钟，不可用于下单",
+            "link": "https://finance.yahoo.com/quote/" + urllib.parse.quote(symbol),
+            "spark": item.get("spark") or [], "updated": int(time.time())}
+
+
+def detail_macro(indicator):
+    parts = gs.macro().get("parts", {}) if hasattr(gs, "macro") else {}
+    fred = (parts.get("fred") or {}).get("series") or []
+    hit = next((x for x in fred if str(x.get("id", "")).lower() == str(indicator).lower()
+                or str(indicator).lower() in str(x.get("name") or x.get("label") or "").lower()), None)
+    glossary = i18n.glossary(str(indicator).upper()) if str(indicator).upper() in i18n.GLOSSARY else None
+    if not hit and not glossary:
+        return {"error": "未找到该宏观指标", "indicator": indicator,
+                "available": [x.get("id") for x in fred][:20]}
+    return {"type": "macro", "indicator": indicator, "series": hit,
+            "explanation": glossary, "all_series": fred,
+            "history": hit.get("series") or hit.get("values") or [],
+            "note": "官方统计发布值，非实时行情；截止期见 as_of 字段",
+            "source": "FRED / 美国财政部 / ECB / World Bank 官方公开数据",
+            "updated": int(time.time())}
+
+
+def detail_source(sid):
+    st = gs.sources_status()
+    hit = next((x for x in st if x.get("id") == sid), None)
+    if not hit:
+        return {"error": "未找到该数据源", "id": sid}
+    return {"type": "source", "item": hit,
+            "probe": "可在「数据源管理」页点击连接探测，返回真实请求耗时与结果",
+            "note": "状态、成功率、最近成功/失败与错误原因均为实机记录",
+            "updated": int(time.time())}
+
+
+def detail_event(nid):
+    return detail_news(nid)
+
+
+def detail_industry(name):
+    items = NEWS["items"] or collect_news()["items"]
+    hits = [x for x in items if name.lower() in (x.get("title") or "").lower()
+            or name == x.get("category")][:12]
+    return {"type": "industry", "name": name, "count": len(hits),
+            "items": [{"id": x.get("id"), "title": x.get("title"), "source": x.get("source"),
+                       "link": x.get("link"), "published": x.get("published")} for x in hits],
+            "note": "按站内真实资讯标题/分类匹配；未接入行业景气指数与行业财务数据",
+            "updated": int(time.time())}
+
+
+def detail_alert(aid):
+    a = gs.alerts() or {}
+    rules = (a or {}).get("rules") or []
+    hit = rules[int(aid)] if str(aid).isdigit() and int(aid) < len(rules) else None
+    if hit is None:
+        return {"error": "未找到该预警规则", "id": aid}
+    return {"type": "alert", "rule": hit, "note": "命中判断基于真实延迟行情", "updated": int(time.time())}
+
+
 # ---------------- HTTP ----------------
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
@@ -684,6 +918,16 @@ class H(BaseHTTPRequestHandler):
             return self._static("/static" + route)
         if route.startswith("/static/"):
             return self._static(route)
+        # V2.1：详情路由支持真实 pathname（/news/xxx、/stocks/AAPL …），
+        # 后端一律回 SPA 入口，前端按 path 解析；刷新 / 直达 URL / 前进后退均可用。
+        # 单段视图（/glossary、/opportunities …）走白名单，避免把未知路径全吞成首页。
+        SPA_VIEWS = {"/dashboard", "/news", "/events", "/geo", "/industry", "/social",
+                     "/quotes", "/heatmap", "/macro", "/fx", "/commodities", "/crypto",
+                     "/flows", "/etf", "/research", "/scoring", "/ai", "/backtest",
+                     "/watchlist", "/alerts", "/sources", "/about",
+                     "/opportunities", "/glossary"}
+        if not route.startswith("/api/") and (route.count("/") >= 2 or route in SPA_VIEWS):
+            return self._static("/static/index.html")
 
         if route == "/api/events":
             # SSE：每 15s 推送一次状态，供前端感知"有新数据"
@@ -713,7 +957,9 @@ class H(BaseHTTPRequestHandler):
                 "brief_updated": BRIEF["updated"], "news_count": len(NEWS["items"]),
                 "quotes_count": len(QUOTES["items"]), "news_errors": NEWS["errors"],
                 "llm_enabled": CFG.get("llm", {}).get("enabled", False),
-                "version": "GFIC 2.0", "sources": gs.status_summary(),
+                "version": "GFIC 2.1", "sources": gs.status_summary(),
+                "capabilities": ["investment_cockpit", "opportunity_radar", "detail_routes",
+                                 "plain_mode", "glossary", "i18n_5lang", "track_record"],
                 "time": int(time.time()),
             })
 
@@ -865,7 +1111,64 @@ class H(BaseHTTPRequestHandler):
                     for k in list(gs.CACHE):
                         if not k.startswith("sec:"):
                             gs.CACHE.pop(k, None)
+            with LOCK:
+                RESEARCH["opportunities"] = None
+                RESEARCH["quality"] = None
+                RESEARCH["quality_ts"] = 0
             return self._send(200, {"ok": True, "what": what})
+
+        # ---- V2.1 决策驾驶舱 / 研究雷达 / 详情页 / 国际化 ----
+        if route == "/api/daily/summary":
+            return self._send(200, daily_summary())
+
+        if route == "/api/research/opportunities":
+            market = q.get("market", ["全球市场"])[0]
+            cycle = q.get("cycle", ["mid"])[0]
+            limit = int(q.get("limit", ["12"])[0])
+            if market != "全球市场" or cycle != "mid" or limit != 12:
+                return self._send(200, gr.opportunities(news_items=NEWS["items"], limit=limit,
+                                                       market=market, cycle=cycle, gs=gs,
+                                                       with_fin=True))
+            return self._send(200, _research_cached())
+
+        if route == "/api/research/leaders":
+            return self._send(200, gr.leaders(q.get("market", ["全球市场"])[0],
+                                             q.get("period", ["d1"])[0]))
+
+        if route == "/api/research/quality":
+            with LOCK:
+                # 5 分钟 TTL：某次 SEC 偶发抖动不应让优质公司榜长期少一家
+                if not RESEARCH["quality"] or time.time() - RESEARCH["quality_ts"] > 300:
+                    RESEARCH["quality"] = gr.quality(gs=gs)
+                    RESEARCH["quality_ts"] = time.time()
+            return self._send(200, RESEARCH["quality"])
+
+        if route == "/api/research/stock":
+            return self._send(200, gr.stock_detail(q.get("symbol", [""])[0], NEWS["items"], gs))
+
+        if route == "/api/research/track":
+            return self._send(200, gr.track(gs))
+
+        if route == "/api/detail":
+            typ, key = q.get("type", [""])[0], q.get("id", [""])[0]
+            fn = {"news": detail_news, "event": detail_event, "asset": detail_asset,
+                  "macro": detail_macro, "source": detail_source,
+                  "industry": detail_industry, "alert": detail_alert}.get(typ)
+            if not fn:
+                return self._send(400, {"error": "未知详情类型", "type": typ,
+                                       "supported": ["news", "event", "asset", "macro", "source", "industry", "alert"]})
+            return self._send(200, fn(key))
+
+        if route == "/api/i18n/dict":
+            return self._send(200, i18n.dictionary(q.get("lang", ["zh-CN"])[0]))
+        if route == "/api/i18n/glossary":
+            return self._send(200, i18n.glossary(q.get("term", [None])[0], q.get("q", [""])[0]))
+        if route == "/api/i18n/priority":
+            return self._send(200, i18n.priority_definition())
+        if route == "/api/i18n/terms":
+            return self._send(200, i18n.glossary(q=q.get("q", [""])[0]))
+        if route == "/api/i18n/stats":
+            return self._send(200, i18n.stats())
 
         self._send(404, {"error": "route not found"})
 
@@ -874,6 +1177,9 @@ class H(BaseHTTPRequestHandler):
         fp = os.path.normpath(os.path.join(
             BASE, "static", p.path.lstrip("/")))
         if p.path in ("/", "/index.html"):
+            fp = os.path.join(BASE, "static", "index.html")
+        elif not os.path.isfile(fp) and p.path.count("/") >= 2:
+            # 详情路由的 HEAD 同样回 SPA 入口
             fp = os.path.join(BASE, "static", "index.html")
         if not os.path.isfile(fp):
             self.send_response(404); self.end_headers(); return
@@ -919,13 +1225,24 @@ class H(BaseHTTPRequestHandler):
                 return self._send(400, {"error": "data 必须是对象"})
             return self._send(200, gs.alerts_save(payload))
 
+        # ---- V2.1 全站翻译（动态内容按需 AI，固定文案走本地词典）----
+        if p.path == "/api/i18n/translate":
+            text, lang = data.get("text") or "", (data.get("lang") or "zh-CN").strip()
+            if lang not in i18n.LANGS:
+                return self._send(400, {"error": "不支持的语言", "supported": i18n.SUPPORTED})
+            return self._send(200, i18n.translate(text, lang, bool(data.get("force"))))
+        if p.path == "/api/i18n/translate_batch":
+            lang = (data.get("lang") or "en").strip()
+            return self._send(200, i18n.translate_batch(data.get("items") or [], lang,
+                                                       limit=int(data.get("limit", 8))))
+
         self._send(404, {"error": "route not found"})
 
 
 def main():
     load_config()
     port, host = CFG.get("port", 6789), CFG.get("host", "0.0.0.0")
-    for fn in (collect_news, fetch_quotes, build_brief, _warm_official):
+    for fn in (collect_news, fetch_quotes, build_brief, _warm_official, _warm_research):
         threading.Thread(target=fn, daemon=True).start()
     threading.Thread(target=_bg_loop, daemon=True).start()
     url = "http://localhost:%d/" % port

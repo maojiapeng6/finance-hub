@@ -7,6 +7,7 @@
 <title>GFIC · 全球金融情报中心</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b1220'/%3E%3Cpath d='M12 44 L25 30 L34 37 L52 17' stroke='%234dd4e8' stroke-width='5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='52' cy='17' r='4' fill='%23a78bfa'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/v21.css">
 </head>
 <body>
 <div class="grid-bg" aria-hidden="true"></div>
@@ -60,6 +61,13 @@
           <span>搜索资讯 / 数据源 / 标的</span><kbd>/</kbd>
         </button>
         <div class="live-pill" id="livePill"><i></i><span id="liveTxt">连接中</span></div>
+        <select class="v21-sel" id="langSel" title="全站默认显示语言" aria-label="语言">
+          <option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option>
+          <option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option>
+        </select>
+        <button class="icon-btn" id="btnTranslate" title="一键翻译当前页" aria-label="翻译">文/A</button>
+        <button class="icon-btn" id="btnEasy" title="小白易懂模式（专业/易懂切换）" aria-label="易懂模式">易</button>
+        <button class="icon-btn" id="btnGlossary" title="金融术语词典" aria-label="术语词典">?</button>
         <button class="icon-btn" id="btnTheme" title="切换深浅主题" aria-label="切换主题">◐</button>
         <button class="icon-btn" id="btnNotify" title="风险预警通知" aria-label="通知">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -89,6 +97,13 @@
 
       <!-- ================= 右侧 AI 栏 ================= -->
       <aside class="rightbar" id="rightbar">
+        <!-- V2.1 今日市场总结：一句话 / 三个关键事件 / 机会 / 风险 / 温度 -->
+        <section class="rb-card rb-daily">
+          <div class="rb-head"><div><span class="rb-ico ai">◈</span><b data-i18n="lbl.aiSummary">AI 今日市场总结</b></div>
+            <button class="mini" id="btnDailyRefresh" title="刷新总结">↻</button></div>
+          <div class="daily-body" id="dailyBody"><div class="skeleton"><i></i><i></i></div></div>
+        </section>
+
         <section class="rb-card rb-brief">
           <div class="rb-head">
             <div><span class="rb-ico ai">✦</span><b>AI 盘面简报</b></div>
@@ -156,7 +171,22 @@
   </div>
 </div>
 
+<!-- V2.1 术语解释 / 等级说明 弹窗 -->
+<div class="overlay" id="termOverlay" hidden>
+  <div class="v21-modal">
+    <div class="vm-head"><b id="termTitle">术语解释</b><button id="btnCloseTerm">✕</button></div>
+    <div class="vm-body" id="termBody"></div>
+  </div>
+</div>
+<div class="overlay" id="priorityOverlay" hidden>
+  <div class="v21-modal">
+    <div class="vm-head"><b>P1 / P2 / P3 重要等级说明</b><button id="btnClosePriority">✕</button></div>
+    <div class="vm-body" id="priorityBody"></div>
+  </div>
+</div>
+
 <div id="toast" class="toast" hidden></div>
 <script src="/static/app.js"></script>
+<script src="/static/v21.js"></script>
 </body>
 </html>

@@ -6,7 +6,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY server.py gfic_sources.py config.json sources_catalog.json ./
+COPY server.py gfic_sources.py gfic_research.py gfic_i18n.py config.json sources_catalog.json ./
 COPY static ./static
 RUN mkdir -p /app/data
 
