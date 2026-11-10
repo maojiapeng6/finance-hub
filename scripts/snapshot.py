@@ -332,6 +332,13 @@ echo "数据卷已恢复；恢复前数据：%s/data-before-db-restore-$STAMP"
         "restore": "sudo bash %s/rollback_to_%s.sh" % (ROOT, suffix),
         "rollback_to_v2.0": "sudo bash %s/rollback_to_v2.0.sh" % ROOT,
     }
+    # 校验必须在写盘前完成：verified / 完整 checks 要真正落进 manifest.json
+    check("manifest 不含明文密钥",
+          "api_key\": \"" not in json.dumps(manifest, ensure_ascii=False, indent=2))
+    REPORT["verified"] = all(c["ok"] for c in REPORT["checks"])
+    manifest["verified"] = REPORT["verified"]
+    manifest["checks"] = REPORT["checks"]
+    manifest["errors"] = REPORT["errors"]
     write(os.path.join(DST, "manifest.json"), json.dumps(manifest, ensure_ascii=False, indent=2), 0o600)
     readme = """# %s
 
@@ -368,11 +375,8 @@ sudo bash %s/rollback_to_v2.0.sh   # 回到升级前 V2.0
        ver.get("service_version"), len(routes), len(api_routes),
        len(filelist), REPORT["total_bytes"], ROOT, suffix, ROOT)
     write(os.path.join(DST, "README.md"), readme)
-    check("manifest 不含明文密钥",
-          "api_key\": \"" not in open(os.path.join(DST, "manifest.json"), encoding="utf-8").read())
 
-    ok = all(c["ok"] for c in REPORT["checks"])
-    REPORT["verified"] = ok
+    ok = REPORT["verified"]
     print("\n" + "=" * 72)
     print("  快照校验： %d 项通过 / %d 项失败 · %d 文件 / %d B" %
           (sum(1 for c in REPORT["checks"] if c["ok"]),

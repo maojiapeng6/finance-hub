@@ -17,6 +17,7 @@
 - **把已缓存的 SEC 官方财务真正接入机会评分**：服务端 `with_fin=True` + `financials(cached_only=True)` + 后台 `_warm_research` 预热；机会等级由「全部 D / 置信度 0.15」变为真实 S/A/B/C/D、置信度 0.5–0.75，SEC 净利率 / ROE 进入「为什么值得关注」。
 - 修复领先榜免责声明残留 `**`、手机 390px 横向溢出 54px、易懂模式在词典 / 详情页无内容、`/glossary` 与 `/opportunities` 直达 404、V2.0 快照目录权限 000。
 - 修复 **≤980px 侧栏脱离网格流导致主内容 0 宽塌陷**（平板/手机竖排文字）；修复 SEC companyfacts 偶发降级结果被缓存 1h/24h 导致 AAPL 长期 0 财务。
+- 修复快照脚本生成的回滚脚本名 `rollback_to_gfic_v2_1.sh` 与文档 `rollback_to_v2_1.sh` 不一致、V2.0 回滚引用误写成 `v2_0`；修复 `manifest.json` 在写盘后才计算 `verified` 导致磁盘清单缺该字段。
 
 **实测口径**
 - 本地接口冒烟 **97/97**、真实浏览器 **88/88**；NAS 接口 **97/97**、浏览器 **88/88**；0 条 JS 运行时异常。
@@ -25,7 +26,7 @@
 
 **版本存档与回滚**
 - 升级前已创建 `GFIC_V2.0_升级前完整快照`（18/18 校验通过、37 文件 / 444,355 B、数据备份恢复演练逐文件 SHA256 一致）与 Git Tag `v2.0.0-pre-gfic-v21`。
-- 升级完成创建 `GFIC_V2.1_升级完成版本` 快照：`/vol1/1000/docker/GFIC/backups/snapshots/GFIC_V2.1/`；快照生成时自动执行源码 / 凭据 / 数据卷 / 容器 / 路由 / 版本多项校验并做恢复演练，逐项结果见快照内 `manifest.json`。
+- 升级完成创建 `GFIC_V2.1_升级完成版本` 快照：`/vol1/1000/docker/GFIC/backups/snapshots/GFIC_V2.1/`；**19/19 项校验通过、`verified=true`、0 错误**，数据卷独立备份且恢复演练逐文件 SHA256 一致、JSON 全部可解析；逐项结果与全文件 SHA256 清单见快照内 `manifest.json`。
 - 一键回滚：`sudo bash /vol1/1000/docker/GFIC/backups/rollback_to_v2.0.sh`（回 V2.0）、`sudo bash /vol1/1000/docker/GFIC/backups/rollback_to_v2_1.sh`（回 V2.1）；脚本先把当前现场另存 `pre-rollback-<时间戳>/` 再停服还原，不破坏历史。
 - 快照目录含 `secrets/config.json`（600），**绝不入库**；`source_backup.tar.gz` 不含任何明文凭据。
 

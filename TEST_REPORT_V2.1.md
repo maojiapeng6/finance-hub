@@ -77,6 +77,8 @@
 | 12 | V2.0 快照目录权限 000 | NAS root umask 导致目录不可遍历 | `chmod 755` 目录 / 700 secrets / 600 敏感文件；新快照脚本显式 chmod | 目录可正常访问 |
 | 13 | **平板 / 手机主内容被挤成一条竖排文字窄列** | `@media(max-width:980px)` 把 `.app-shell` 设为两列 `0 minmax(0,1fr)`，但侧栏同时 `position:fixed` 脱离网格流，`.main-col` 落到 0 宽的第一列 | `v21.css` 在 ≤980px 覆盖为单列 `minmax(0,1fr)`；自动化测试新增「主内容区可见宽度 ≥ 阈值」「顶栏铺满」断言 | 768/390 主区 725px / 372px，截图人工复核正常 |
 | 14 | NAS 上 AAPL `/api/sec` 返回 0 项财务 | SEC companyfacts 偶发截断/抖动产生「有公司名/公告但 0 财务」的降级结果，被缓存 1 小时（内存）+ 24 小时（磁盘） | `fetch_sec` 解析失败立即重试、降级结果标 `partial` 且内存只缓存 60s；`financials` 只缓存含真实 `facts` 的结果、失败结果不落 24h；`quality` 加 5 分钟 TTL | NAS AAPL / MSFT / NVDA 各 10 项财务，优质公司榜 12 家含 AAPL |
+| 15 | V2.1 快照 `manifest.json` 缺 `verified` 字段 | 脚本先写 manifest、后计算 `REPORT["verified"] = ok`，磁盘清单是浅拷贝，字段没落盘 | 把全部 `check` 与 `verified` 计算提前到写盘前，`checks` / `errors` / `verified` 同步写入 | 独立复核 `verified=true`、19/19、0 错误 |
+| 16 | 回滚脚本命名与交付文档不一致 | `suffix` 直接由 `GFIC_V2.1` 生成 `gfic_v2_1`，且 V2.0 回滚引用误写成 `rollback_to_v2_0.sh`（NAS 实际为 `rollback_to_v2.0.sh`） | `suffix` 规范化为 `v2_1`；V2.0 引用改回实际文件名 | `rollback_to_v2_1.sh` / `rollback_to_v2.0.sh` 均存在、755、`bash -n` 通过，且各自指向正确快照目录 |
 
 ---
 
@@ -113,7 +115,7 @@
 |---|---|
 | V2.0 升级前快照 | `/vol1/1000/docker/GFIC/backups/snapshots/GFIC_V2.0/`（18/18 校验通过、37 文件 / 444,355 B、数据备份恢复演练 SHA256 一致） |
 | 一键回滚到 V2.0 | `sudo bash /vol1/1000/docker/GFIC/backups/rollback_to_v2.0.sh` |
-| V2.1 升级完成快照 | `/vol1/1000/docker/GFIC/backups/snapshots/GFIC_V2.1/` |
+| V2.1 升级完成快照 | `/vol1/1000/docker/GFIC/backups/snapshots/GFIC_V2.1/`（**19/19 校验通过、`verified=true`、0 错误**；数据备份恢复演练逐文件 SHA256 一致；文件数与全文件哈希见 `manifest.json`） |
 | 一键回滚到 V2.1 | `sudo bash /vol1/1000/docker/GFIC/backups/rollback_to_v2_1.sh` |
 
 回滚脚本会先把当前现场另存 `backups/pre-rollback-<时间戳>/`，再停服 → 还原代码 → 还原凭据 → 还原数据 → 重建容器 → 健康检查。
