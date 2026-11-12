@@ -28,9 +28,9 @@ sudo docker compose up -d --build
 ```bash
 NAS_PASS=<SSH密码> python deploy_nas.py
 ```
-访问：`http://192.168.10.110:6789`
+访问：`http://<NAS_IP>:6789`
 
-**前置条件**：境外数据需经代理 `192.168.10.107:7893`；AI 网关 `http://192.168.10.110:3001/v1` 可达。
+**前置条件**：境外数据需经代理 `<NAS_IP>:7893`；AI 网关 `http://<NAS_IP>:3001/v1` 可达。
 
 ---
 
@@ -155,9 +155,9 @@ sudo bash /vol1/1000/docker/GFIC/backups/rollback_to_v2_1.sh   # 回到 V2.1
 ## 7. 测试
 
 ```bash
-python tests/smoke_test.py --base http://192.168.10.110:6789
-python tests/smoke_test.py --base http://192.168.10.110:6789 --full   # 含 AI 简报/问答
-python tests/browser_test.py --base http://192.168.10.110:6789         # 真实浏览器全站验收
+python tests/smoke_test.py --base http://<NAS_IP>:6789
+python tests/smoke_test.py --base http://<NAS_IP>:6789 --full   # 含 AI 简报/问答
+python tests/browser_test.py --base http://<NAS_IP>:6789         # 真实浏览器全站验收
 ```
 `smoke_test.py` 覆盖：健康检查、静态资源 404 回归、资讯去重与时间戳、行情字段、官方宏观真实性、加密多所交叉、SEC 申报、数据源启停与连接探测、持久化写后回读与 1:1 还原、**V2.1 今日总结 / 机会雷达 / 评分口径逐项复核 / 领先榜 / 优质公司榜 / 股票详情 / 成绩单 / 详情接口 / SPA 直达路由 / 五语言词典 / 术语 / 等级定义 / 翻译与批量翻译 / 数据真实性总检**。`--full` 额外回归 AI 简报质量闸门。
 

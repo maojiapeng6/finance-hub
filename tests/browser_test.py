@@ -9,7 +9,7 @@
 
 用法：
   python tests/browser_test.py --base http://127.0.0.1:6789
-  python tests/browser_test.py --base http://192.168.10.110:6789 --shots _tmp/nas_v21
+  python tests/browser_test.py --base http://<NAS_IP>:6789 --shots _tmp/nas_v21
 
 产出：
   - 控制台逐项 PASS/FAIL（不虚构数量，全部来自真实断言）

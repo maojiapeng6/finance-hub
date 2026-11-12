@@ -30,7 +30,7 @@ PROXY = ""
 # 该地址仅用于满足官方 UA 规范（个人内部研究），不代表对外服务。
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120 Safari/537.36 GFIC/2.0 "
-      "(personal research; contact: research@example.com)")
+      "(personal research; contact: <EMAIL>)")
 _NV_CTX = ssl.create_default_context()
 _NV_CTX.check_hostname = False
 _NV_CTX.verify_mode = ssl.CERT_NONE

@@ -17,7 +17,7 @@ LOCK = threading.RLock()
 PROXY = ""
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124 Safari/537.36 GFIC/2.1 "
-      "(personal research; contact: research@example.com)")
+      "(personal research; contact: <EMAIL>)")
 
 # 真实标的清单（仅代码/名称/市场等元数据，不含任何行情数值）
 UNIVERSE = [

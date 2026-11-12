@@ -11,13 +11,13 @@ services:
     environment:
       TZ: Asia/Shanghai
       FR_NO_BROWSER: "1"
-      FR_PROXY: "http://192.168.10.107:7893"
+      FR_PROXY: "http://<NAS_IP>:7893"
       # AI 密钥可用环境变量覆盖（优先级高于 config.json），例如 FR_LLM_KEY=${FR_LLM_KEY:-}
       FR_LLM_KEY: "${FR_LLM_KEY:-}"
-      FR_LLM_BASE: "http://192.168.10.110:3001/v1"
-      HTTP_PROXY: "http://192.168.10.107:7893"
-      HTTPS_PROXY: "http://192.168.10.107:7893"
-      NO_PROXY: "localhost,127.0.0.1,192.168.10.110,192.168.10.107"
+      FR_LLM_BASE: "http://<NAS_IP>:3001/v1"
+      HTTP_PROXY: "http://<NAS_IP>:7893"
+      HTTPS_PROXY: "http://<NAS_IP>:7893"
+      NO_PROXY: "localhost,127.0.0.1,<NAS_IP>,<NAS_IP>"
     volumes:
       - ./config.json:/app/config.json:ro
       - ./sources_catalog.json:/app/sources_catalog.json:ro

@@ -3,7 +3,7 @@
 """GFIC 2.1 接口冒烟测试 / 实机验收（仅 Python 标准库）
 用法：
   python tests/smoke_test.py                          # 默认 http://127.0.0.1:6789
-  python tests/smoke_test.py --base http://192.168.10.110:6789
+  python tests/smoke_test.py --base http://<NAS_IP>:6789
   python tests/smoke_test.py --full                    # 额外跑 AI 简报/问答（较慢）
 
 覆盖：健康检查、静态资源（含 V2.1 扩展层）、资讯去重/时间戳、行情字段、
